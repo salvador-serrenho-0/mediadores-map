@@ -227,7 +227,7 @@ html,body{height:100%;height:100dvh;overflow:hidden;font-family:'DM Sans',sans-s
 // ═══════════════════════════════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════════════════════════════
-let SHEET_URL = 'https://script.google.com/macros/s/AKfycbz6o3d6LjjTnM53ZWnc1a1E8ut9OncM6iAsUDkEsE8R4RI_cOtGhzMb6nrBrtVIZMAl/exec';
+let SHEET_URL = 'https://script.google.com/macros/s/AKfycbxUrIaV-94LyRO1rMj3bQZNDaVDbsyAiL0h1hhVqjYR59IVKno1vtswDTYeAydF2iNy/exec';
 
 // ═══════════════════════════════════════════════════════════════════
 // DATA — 80 empresas Lisboa
@@ -353,12 +353,11 @@ async function syncFromSheet(){
   if(!SHEET_URL) return;
   setSyncDot('syncing');
   try {
-    const r = await fetch(SHEET_URL+'?action=get', {cache:'no-store'});
+    const r = await fetch(SHEET_URL, {cache:'no-store'});
     const data = await r.json();
-    // merge: sheet wins for visited status, local wins for photos/notes
     data.forEach(row => {
-      const i = row.idx;
-      if(i===undefined||i<0||i>=CO.length) return;
+      const i = parseInt(row.idx);
+      if(isNaN(i)||i<0||i>=CO.length) return;
       if(!ST[i]) ST[i]={v:false,notes:'',photos:[]};
       ST[i].v = row.visited === true || row.visited === 'TRUE' || row.visited === 'true';
       if(row.notes && !ST[i].notes) ST[i].notes = row.notes;
@@ -373,9 +372,18 @@ async function pushToSheet(i){
   setSyncDot('syncing');
   try {
     const s = gs(i);
-    const body = JSON.stringify({action:'set', idx:i, visited:s.v, notes:s.notes, name:CO[i].n});
-    await fetch(SHEET_URL, {method:'POST', body, headers:{'Content-Type':'application/json'}});
+    // Use URL params to avoid CORS preflight issues with Apps Script
+    const params = new URLSearchParams({
+      action: 'set',
+      idx: i,
+      visited: s.v,
+      notes: s.notes || '',
+      name: CO[i].n
+    });
+    await fetch(SHEET_URL + '?' + params.toString(), {method:'GET', cache:'no-store'});
     setSyncDot('ok');
+    // Re-fetch after a short delay to confirm
+    setTimeout(syncFromSheet, 2000);
   } catch(e){ setSyncDot('err'); }
 }
 
