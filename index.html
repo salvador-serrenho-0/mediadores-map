@@ -5,191 +5,229 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0f1117">
+<meta name="theme-color" content="#0d0f18">
 <title>Mediadores Lisboa</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 :root {
-  --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a; --border: #2e3347;
-  --text: #e8eaf0; --muted: #7b82a0; --accent: #4f8ef7; --green: #22c55e;
-  --red: #ef4444; --orange: #f59e0b;
+  --bg:#0d0f18;--surface:#161928;--surface2:#1e2235;--surface3:#252940;
+  --border:#2a2f4a;--border2:#363b5e;
+  --text:#eceef5;--text2:#a0a8c0;--text3:#636b8a;
+  --accent:#4f8ef7;--accent2:#3a7de8;
+  --green:#22c55e;--green2:#16a34a;
+  --gold:#c9a227;--gold2:#a88418;
+  --gold-bg:rgba(201,162,39,.12);--gold-bd:rgba(201,162,39,.28);
+  --red:#ef4444;--orange:#f59e0b;
+  --r:12px;--rs:8px;
+  --shadow:0 4px 24px rgba(0,0,0,.45);--shadow-lg:0 8px 40px rgba(0,0,0,.6);
+  --panel-w:360px;--top-h:56px;
+  --ease:.2s cubic-bezier(.4,0,.2,1);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;height:100dvh;overflow:hidden;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text)}
+html,body{height:100%;height:100dvh;overflow:hidden;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;outline:none}
+input,textarea{font-family:inherit;outline:none}
 
-/* TOPBAR */
-#topbar{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;position:relative;z-index:400}
-#topbar h1{font-size:13px;font-weight:600;flex:1;letter-spacing:.02em}
-#topbar h1 span{color:var(--accent)}
-.pill{font-size:11px;font-family:'DM Mono',monospace;padding:4px 9px;border-radius:20px;border:1px solid var(--border);color:var(--muted);white-space:nowrap}
-.pill b{color:var(--text)}
-#sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
-#sync-dot.syncing{background:var(--orange);animation:pulse 1s infinite}
+/* ── TOPBAR ── */
+#topbar{height:var(--top-h);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;z-index:400;position:relative}
+#logo{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+#logo h1{font-size:14px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#logo h1 span{color:var(--accent)}
+.chip{display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text2);white-space:nowrap;flex-shrink:0}
+.chip b{color:var(--text);font-weight:500}
+#sync-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0;transition:background var(--ease)}
+#sync-dot.syncing{background:var(--orange);animation:blink 1.2s ease infinite}
 #sync-dot.ok{background:var(--green)}
 #sync-dot.err{background:var(--red)}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-#btn-lista{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 11px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+#btn-lista{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:var(--rs);font-size:12px;font-weight:500;transition:all var(--ease);flex-shrink:0}
+#btn-lista:hover{background:var(--surface3);border-color:var(--border2)}
+#btn-lista:active{opacity:.7}
 
-/* LAYOUT */
-#wrap{display:flex;height:calc(100dvh - 52px);overflow:hidden}
-#map-wrap{flex:1;position:relative}
-#map{width:100%;height:100%}
+/* ── LAYOUT ── */
+#wrap{display:flex;height:calc(100dvh - var(--top-h));overflow:hidden}
+#map-wrap{flex:1;position:relative;min-width:0}
+#map{width:100%;height:100%;transition:opacity .4s ease}
 
-/* PANEL */
-#panel{width:340px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;transition:transform .28s cubic-bezier(.4,0,.2,1)}
+/* ── MAP SWITCHER ── */
+#switcher{position:absolute;top:14px;right:14px;z-index:450;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:4px;display:flex;flex-direction:column;gap:2px;box-shadow:var(--shadow)}
+.ms{display:flex;align-items:center;gap:7px;padding:7px 11px;border-radius:8px;background:transparent;border:1px solid transparent;color:var(--text2);font-size:11px;font-weight:500;transition:all var(--ease);white-space:nowrap;min-width:108px}
+.ms:hover{background:var(--surface2);color:var(--text)}
+.ms.on{background:var(--surface3);border-color:var(--border2);color:var(--text)}
+.ms-ic{font-size:13px;width:18px;text-align:center}
 @media(max-width:680px){
-  #panel{position:fixed;top:52px;left:0;right:0;bottom:0;width:100%;z-index:600;transform:translateX(100%)}
+  #switcher{top:auto;bottom:110px;right:10px;flex-direction:row;min-width:unset}
+  .ms{min-width:unset;padding:8px 10px}
+  .ms .ms-label{display:none}
+}
+
+/* ── PANEL ── */
+#panel{width:var(--panel-w);background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;transition:transform var(--ease)}
+@media(max-width:900px){:root{--panel-w:300px}}
+@media(max-width:680px){
+  #panel{position:fixed;top:var(--top-h);left:0;right:0;bottom:0;width:100%;z-index:600;transform:translateX(100%);border-left:none}
   #panel.open{transform:translateX(0)}
 }
-#panel-head{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
-#panel-head h2{font-size:13px;font-weight:600;margin-bottom:2px}
-#panel-head p{font-size:11px;color:var(--muted)}
-
-/* PROGRESS */
-#prog-wrap{padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
-#prog-bg{background:var(--surface2);border-radius:3px;height:5px;overflow:hidden}
-#prog-bar{height:100%;background:var(--green);border-radius:3px;transition:width .5s ease;width:0%}
-#prog-label{display:flex;justify-content:space-between;margin-top:5px;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace}
-
-/* SEARCH + FILTERS */
+#panel-head{padding:16px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+#panel-head h2{font-size:14px;font-weight:600;margin-bottom:2px}
+#panel-head p{font-size:11px;color:var(--text3);line-height:1.5}
+#legend{display:flex;gap:14px;padding:9px 18px;border-bottom:1px solid var(--border);flex-shrink:0}
+.leg{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text3)}
+.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+#prog-wrap{padding:10px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+#prog-bg{background:var(--surface2);border-radius:4px;height:6px;overflow:hidden}
+#prog-bar{height:100%;background:linear-gradient(90deg,var(--green2),var(--green));border-radius:4px;transition:width .6s cubic-bezier(.4,0,.2,1);width:0%}
+#prog-label{display:flex;justify-content:space-between;margin-top:5px;font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
 #search-wrap{padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
-#search{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;font-family:inherit;outline:none}
+#search{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px 8px 34px;border-radius:var(--rs);font-size:13px;transition:border-color var(--ease);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23636b8a' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:10px center}
 #search:focus{border-color:var(--accent)}
-#filters{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
-.fb{flex:1;padding:6px 4px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s;font-weight:500}
+#search::placeholder{color:var(--text3)}
+#filters{display:flex;gap:5px;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+#filters::-webkit-scrollbar{display:none}
+.fb{flex:1;min-width:fit-content;padding:6px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text3);font-size:11px;font-weight:500;transition:all var(--ease);white-space:nowrap}
+.fb:hover{color:var(--text2);background:var(--surface3)}
 .fb.on{background:var(--accent);border-color:var(--accent);color:#fff}
-
-/* LIST */
 #list{flex:1;overflow-y:auto;padding:8px}
 #list::-webkit-scrollbar{width:3px}
-#list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-.card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-bottom:6px;cursor:pointer;transition:border-color .15s;position:relative}
-.card:active{background:var(--border)}
-.card.done{border-left:3px solid var(--green)}
-.card.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)40}
-.cn{font-size:12px;font-weight:600;line-height:1.35;padding-right:64px;margin-bottom:3px}
-.cm{font-size:11px;color:var(--muted);line-height:1.5}
-.cbadge{position:absolute;top:10px;right:10px;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500}
-.cbadge.done{background:#22c55e18;color:var(--green);border:1px solid #22c55e30}
-.cbadge.pend{background:#ef444418;color:#f87171;border:1px solid #ef444430}
-.cnum{font-size:10px;color:#ffffff22;font-family:'DM Mono',monospace;margin-bottom:3px}
+#list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+#empty{text-align:center;padding:40px 20px;color:var(--text3);font-size:13px}
 
-/* DETAIL SHEET */
-#sheet{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);border-radius:20px 20px 0 0;padding:0 18px 28px;z-index:500;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-height:88dvh;overflow-y:auto}
+/* ── CARDS ── */
+.card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:11px 12px 11px 15px;margin-bottom:5px;cursor:pointer;transition:all var(--ease);position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px;background:transparent;transition:background var(--ease)}
+.card:hover{border-color:var(--border2);background:var(--surface3)}
+.card:active{opacity:.82}
+.card.done::before{background:var(--green)}
+.card.pri::before{background:var(--gold)}
+.card.done.pri::before{background:var(--green)}
+.card.sel{border-color:var(--accent);box-shadow:0 0 0 1px rgba(79,142,247,.2)}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:3px}
+.cn{font-size:12px;font-weight:600;line-height:1.35;flex:1}
+.cbadge{font-size:9px;padding:2px 7px;border-radius:20px;font-weight:600;white-space:nowrap;flex-shrink:0}
+.cbadge.done{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.25)}
+.cbadge.pend{background:rgba(99,107,138,.1);color:var(--text3);border:1px solid var(--border)}
+.cbadge.pri{background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-bd)}
+.cm{font-size:10px;color:var(--text3);line-height:1.5}
+.cnum{font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:2px}
+
+/* ── SHEET ── */
+#sheet{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);border-radius:20px 20px 0 0;padding:0 20px 32px;z-index:700;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);max-height:90dvh;overflow-y:auto;box-shadow:var(--shadow-lg)}
 #sheet.open{transform:translateY(0)}
 #sheet::-webkit-scrollbar{display:none}
-#sh-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:14px auto 16px}
-#sh-close{position:absolute;top:16px;right:16px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
-#sh-name{font-size:15px;font-weight:600;line-height:1.3;margin-bottom:5px;padding-right:36px}
-#sh-ger{font-size:12px;color:var(--accent);margin-bottom:3px}
-#sh-addr{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5}
-.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
-.ab{padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .15s;-webkit-appearance:none}
-.ab:active{opacity:.8}
+#sh-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:14px auto 18px}
+#sh-close{position:absolute;top:18px;right:18px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);width:30px;height:30px;border-radius:50%;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all var(--ease)}
+#sh-close:hover{background:var(--surface3);color:var(--text)}
+#sh-pri{display:none;align-items:center;gap:5px;background:var(--gold-bg);border:1px solid var(--gold-bd);color:var(--gold);font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;width:fit-content;margin-bottom:10px}
+#sh-pri.show{display:flex}
+#sh-name{font-size:16px;font-weight:700;line-height:1.3;margin-bottom:6px;padding-right:36px}
+#sh-ger{font-size:12px;color:var(--accent);margin-bottom:4px}
+#sh-addr{font-size:12px;color:var(--text3);margin-bottom:18px;line-height:1.5}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.ab{padding:13px 8px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px;transition:all var(--ease);-webkit-appearance:none}
+.ab:hover{background:var(--surface3);border-color:var(--border2)}
+.ab:active{opacity:.75;transform:scale(.98)}
 .ab.prim{background:var(--accent);border-color:var(--accent);color:#fff}
-.ab.succ{background:#15803d;border-color:var(--green);color:#fff}
+.ab.prim:hover{background:var(--accent2)}
+.ab.succ{background:var(--green2);border-color:var(--green);color:#fff}
+.ab.succ:hover{background:#15803d}
 .ab.full{grid-column:1/-1}
-#sh-photos{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;min-height:0}
-.pt{width:70px;height:70px;border-radius:8px;object-fit:cover;border:1px solid var(--border);cursor:pointer;flex-shrink:0}
-.pa{width:70px;height:70px;border-radius:8px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:24px;flex-shrink:0;transition:border-color .15s}
-.pa:active{border-color:var(--accent)}
+#sh-photos{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.pt{width:72px;height:72px;border-radius:var(--rs);object-fit:cover;border:1px solid var(--border);cursor:pointer;transition:transform var(--ease),border-color var(--ease);flex-shrink:0}
+.pt:hover{transform:scale(1.05);border-color:var(--border2)}
+.pa{width:72px;height:72px;border-radius:var(--rs);border:2px dashed var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);font-size:11px;gap:3px;transition:all var(--ease);flex-shrink:0}
+.pa:hover{border-color:var(--accent);color:var(--accent)}
 #photo-in{display:none}
-#sh-notes{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-size:13px;font-family:inherit;resize:none;outline:none;min-height:72px;margin-bottom:10px}
+#photo-up{font-size:11px;color:var(--text3);display:none;align-items:center;gap:6px;margin-bottom:8px}
+#photo-up.show{display:flex}
+.spin{width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:rot .7s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+#sh-notes{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 13px;border-radius:var(--rs);font-size:13px;resize:none;min-height:76px;margin-bottom:10px;transition:border-color var(--ease);line-height:1.5}
 #sh-notes:focus{border-color:var(--accent)}
-#sh-sync-status{font-size:11px;color:var(--muted);text-align:center;margin-top:6px}
+#sh-notes::placeholder{color:var(--text3)}
+#sh-sync{font-size:10px;color:var(--text3);text-align:center;margin-top:8px}
 
-/* TOAST */
-#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:#1e2235;border:1px solid var(--border);color:var(--text);padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;transition:all .25s;pointer-events:none;z-index:600;white-space:nowrap}
+/* ── TOAST ── */
+#toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--surface3);border:1px solid var(--border2);color:var(--text);padding:9px 18px;border-radius:var(--r);font-size:12px;font-weight:500;opacity:0;transition:all .25s ease;pointer-events:none;z-index:900;white-space:nowrap;box-shadow:var(--shadow)}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* LIGHTBOX */
-#lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:700;align-items:center;justify-content:center}
+/* ── LIGHTBOX ── */
+#lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:1000;align-items:center;justify-content:center}
 #lb.open{display:flex}
-#lb img{max-width:95vw;max-height:90dvh;border-radius:8px}
-#lb-x{position:absolute;top:16px;right:16px;color:#fff;font-size:28px;cursor:pointer;padding:4px}
+#lb img{max-width:95vw;max-height:92dvh;border-radius:var(--r);box-shadow:var(--shadow-lg)}
+#lb-x{position:absolute;top:18px;right:18px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:background var(--ease)}
+#lb-x:hover{background:rgba(255,255,255,.2)}
 
-/* OVERLAY */
-#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400}
+/* ── OVERLAY ── */
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
 #overlay.open{display:block}
 
-/* SETUP MODAL */
-#setup{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:800;display:flex;align-items:center;justify-content:center;padding:20px}
-#setup-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:420px;width:100%}
-#setup-box h2{font-size:16px;font-weight:600;margin-bottom:8px}
-#setup-box p{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:16px}
-#setup-box ol{font-size:12px;color:var(--muted);line-height:1.8;padding-left:18px;margin-bottom:16px}
-#setup-box ol li b{color:var(--text)}
-#gid-in{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-size:13px;font-family:'DM Mono',monospace;outline:none;margin-bottom:10px}
-#gid-in:focus{border-color:var(--accent)}
-#gid-in::placeholder{color:var(--muted)}
-.setup-btns{display:flex;gap:8px}
-.sb{flex:1;padding:11px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s}
-.sb.prim{background:var(--accent);border-color:var(--accent);color:#fff}
-.sb:active{opacity:.8}
-#setup-note{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5}
-
-/* LEAFLET */
-.leaflet-popup-content-wrapper{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
-.leaflet-popup-tip{background:var(--surface)}
-.leaflet-popup-content{font-family:'DM Sans',sans-serif;font-size:13px;margin:12px 14px}
-.pn{font-weight:600;font-size:13px;margin-bottom:4px;line-height:1.3}
+/* ── LEAFLET ── */
+.leaflet-popup-content-wrapper{background:var(--surface)!important;color:var(--text)!important;border:1px solid var(--border2)!important;border-radius:var(--r)!important;box-shadow:var(--shadow-lg)!important}
+.leaflet-popup-tip{background:var(--surface)!important}
+.leaflet-popup-content{font-family:'Inter',sans-serif!important;font-size:13px!important;margin:14px 16px!important}
+.pn{font-weight:700;font-size:13px;margin-bottom:4px;line-height:1.3}
 .pg{font-size:11px;color:var(--accent);margin-bottom:3px}
-.pa2{font-size:11px;color:var(--muted);margin-bottom:10px}
-.pb{background:var(--accent);color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500;width:100%}
-.leaflet-control-zoom{border:1px solid var(--border)!important}
-.leaflet-control-zoom a{background:var(--surface)!important;color:var(--text)!important;border-color:var(--border)!important}
+.pa2{font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5}
+.ppri{font-size:10px;font-weight:600;color:var(--gold);background:var(--gold-bg);border:1px solid var(--gold-bd);padding:2px 8px;border-radius:20px;display:inline-block;margin-bottom:8px}
+.pb{background:var(--accent);color:#fff;border:none;padding:9px 14px;border-radius:var(--rs);font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;width:100%;transition:background var(--ease)}
+.pb:hover{background:var(--accent2)}
+.leaflet-control-zoom{border:1px solid var(--border2)!important;border-radius:var(--rs)!important;overflow:hidden}
+.leaflet-control-zoom a{background:var(--surface)!important;color:var(--text2)!important;border-color:var(--border)!important;width:30px!important;height:30px!important;line-height:30px!important;font-size:16px!important;transition:background var(--ease)!important}
+.leaflet-control-zoom a:hover{background:var(--surface3)!important;color:var(--text)!important}
 </style>
 </head>
 <body>
 
-<!-- SETUP MODAL -->
-<div id="setup">
-  <div id="setup-box">
-    <h2>⚙️ Configurar sincronização</h2>
-    <p>Para partilhar o estado de visitas entre toda a equipa, precisas de uma Google Sheet como base de dados. É grátis e leva 2 minutos.</p>
-    <ol>
-      <li>Abre <b>sheets.new</b> no browser</li>
-      <li>Vai a <b>Extensões → Apps Script</b></li>
-      <li>Cola o código do ficheiro <b>apps-script.js</b> que está no mesmo repositório</li>
-      <li>Clica <b>Implementar → Nova implementação → App Web</b></li>
-      <li>Em "Quem tem acesso" escolhe <b>"Qualquer pessoa"</b></li>
-      <li>Copia o <b>URL da implementação</b> e cola abaixo</li>
-    </ol>
-    <input id="gid-in" type="url" placeholder="https://script.google.com/macros/s/…/exec">
-    <div class="setup-btns">
-      <button class="sb" onclick="skipSetup()">Usar offline (sem partilha)</button>
-      <button class="sb prim" onclick="saveGID()">Ligar à Sheet</button>
-    </div>
-    <p id="setup-note">💡 Podes configurar isto mais tarde nas definições. Sem a Sheet, cada telemóvel guarda o seu estado localmente.</p>
-  </div>
-</div>
-
 <div id="topbar">
-  <h1>Mediadores <span>Lisboa</span></h1>
-  <div class="pill">✓ <b id="sv">0</b>/<b id="st">80</b></div>
-  <div id="sync-dot" title="Estado de sincronização"></div>
-  <button id="btn-lista">Lista</button>
+  <div id="logo">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <circle cx="11" cy="11" r="10" fill="#4f8ef7" opacity=".15" stroke="#4f8ef7" stroke-width="1"/>
+      <path d="M11 4C8.2 4 6 6.2 6 9c0 4.5 5 9 5 9s5-4.5 5-9c0-2.8-2.2-5-5-5z" fill="#4f8ef7"/>
+      <circle cx="11" cy="9" r="2" fill="white" opacity=".9"/>
+    </svg>
+    <h1>Mediadores <span>Lisboa</span></h1>
+  </div>
+  <div class="chip">✓ <b id="sv">0</b>&thinsp;/&thinsp;<b id="st">80</b></div>
+  <div id="sync-dot" title="Sincronização"></div>
+  <button id="btn-lista">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    Lista
+  </button>
 </div>
 
 <div id="wrap">
-  <div id="map-wrap"><div id="map"></div></div>
+  <div id="map-wrap">
+    <div id="map"></div>
+    <div id="switcher">
+      <button class="ms on" data-s="dark"><span class="ms-ic">🌙</span><span class="ms-label">Escuro</span></button>
+      <button class="ms" data-s="light"><span class="ms-ic">☀️</span><span class="ms-label">Claro</span></button>
+      <button class="ms" data-s="satellite"><span class="ms-ic">🛰️</span><span class="ms-label">Satélite</span></button>
+    </div>
+  </div>
+
   <div id="panel">
     <div id="panel-head">
       <h2>Empresas — Lisboa</h2>
-      <p>Toca para ver detalhes · Azul = por visitar · Verde = visitada</p>
+      <p>Toca num pin ou card para ver detalhes</p>
+    </div>
+    <div id="legend">
+      <div class="leg"><div class="leg-dot" style="background:var(--gold)"></div>Prioritária</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--accent)"></div>Normal</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--green)"></div>Visitada</div>
     </div>
     <div id="prog-wrap">
       <div id="prog-bg"><div id="prog-bar"></div></div>
       <div id="prog-label"><span id="pl-n">0 visitadas</span><span id="pl-p">0%</span></div>
     </div>
     <div id="search-wrap">
-      <input id="search" type="search" placeholder="🔍 Pesquisar empresa ou gerente…">
+      <input id="search" type="search" placeholder="Pesquisar empresa ou gerente…" autocomplete="off">
     </div>
     <div id="filters">
       <button class="fb on" data-f="all">Todas</button>
+      <button class="fb" data-f="pri">⭐ Prior.</button>
       <button class="fb" data-f="no">Por visitar</button>
       <button class="fb" data-f="yes">Visitadas</button>
     </div>
@@ -199,10 +237,10 @@ html,body{height:100%;height:100dvh;overflow:hidden;font-family:'DM Sans',sans-s
 
 <div id="overlay"></div>
 
-<!-- DETAIL SHEET -->
 <div id="sheet">
   <button id="sh-close">✕</button>
   <div id="sh-handle"></div>
+  <div id="sh-pri">⭐ Empresa Prioritária</div>
   <div id="sh-name"></div>
   <div id="sh-ger"></div>
   <div id="sh-addr"></div>
@@ -212,26 +250,28 @@ html,body{height:100%;height:100dvh;overflow:hidden;font-family:'DM Sans',sans-s
     <button class="ab prim full" onclick="saveNotes()">💾 Guardar notas</button>
   </div>
   <div id="sh-photos"></div>
+  <div id="photo-up"><div class="spin"></div> A enviar foto…</div>
   <input type="file" id="photo-in" accept="image/*" capture="environment" multiple>
-  <textarea id="sh-notes" placeholder="Notas da visita (opcional)…" rows="3"></textarea>
-  <p id="sh-sync-status"></p>
+  <textarea id="sh-notes" placeholder="Notas da visita…" rows="3"></textarea>
+  <p id="sh-sync">🔗 Sincronizado com a equipa</p>
 </div>
 
-<!-- LIGHTBOX -->
-<div id="lb"><span id="lb-x" onclick="closeLB()">✕</span><img id="lb-img" src="" alt=""></div>
-
-<!-- TOAST -->
+<div id="lb"><div id="lb-x" onclick="closeLB()">✕</div><img id="lb-img" src="" alt=""></div>
 <div id="toast"></div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════════
-// CONFIG
-// ═══════════════════════════════════════════════════════════════════
-let SHEET_URL = 'https://script.google.com/macros/s/AKfycbyzbIvuYhSyyUmEPYR_tNrtdNXxkVm9BEopYJN7maCuAodDJYh2RG5HLJmMuhYBL_KS/exec';
+'use strict';
 
-// ═══════════════════════════════════════════════════════════════════
-// DATA — 80 empresas Lisboa
-// ═══════════════════════════════════════════════════════════════════
+// ── CONFIG ──────────────────────────────────────────────────────────
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyzbIvuYhSyyUmEPYR_tNrtdNXxkVm9BEopYJN7maCuAodDJYh2RG5HLJmMuhYBL_KS/exec';
+const PRIORITY  = 20;
+const TILES = {
+  dark:      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  light:     'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+};
+
+// ── DATA ────────────────────────────────────────────────────────────
 const CO = [
   {n:"R2 - MEDIAÇÃO DE SEGUROS, LDA",g:"ROSA DA CONCEIÇÃO CARDINHA NOBRE",m:"Lg. Pedro Correia Marques, Nr. 4 E",lat:38.7172,lng:-9.1432},
   {n:"MOLINARI,LDA",g:"FRANCISCO MIGUEL ANDRADE DA CRUZ ALVES PORTO",m:"Rua Rodrigo Da Fonseca Nr. 56",lat:38.7209,lng:-9.1535},
@@ -242,12 +282,12 @@ const CO = [
   {n:"SÃO VICENTE SEGUROS, S.A.",g:"TIAGO DE SOUSA SANTOS",m:"Rua Profº Gomes Teixeira Nr. 9c",lat:38.7162,lng:-9.1408},
   {n:"JRC - MEDIAÇÃO DE SEGUROS LDA",g:"MARIANA CORREIA LAGE PORTELA MORAIS BORGES DE CARVALHO",m:"Rua Profº Reinaldo Dos Santos Nr. 12 1º B",lat:38.7380,lng:-9.1620},
   {n:"PLC - CORRETORES DE SEGUROS S.A.",g:"BRUNO MIGUEL FIGUEIRA MARQUES NUNES",m:"Av. Infante Santo Nr. 48",lat:38.7073,lng:-9.1568},
-  {n:"CENTRO SEGUROS Y SERVICIOS ECI AG. SEGUROS VINCULADA SA (SUC.PORTUGAL)",g:"JOSE LEOPOLDO DEL NOGAL ROPERO",m:"Av. António Augusto De Aguiar Nr. 31",lat:38.7260,lng:-9.1508},
+  {n:"CENTRO SEGUROS Y SERVICIOS ECI AG. SEGUROS VINCULADA SA",g:"JOSE LEOPOLDO DEL NOGAL ROPERO",m:"Av. António Augusto De Aguiar Nr. 31",lat:38.7260,lng:-9.1508},
   {n:"CSB - MEDIAÇÃO DE SEGUROS, S.A.",g:"DIOGO PAULO BACELAR DE ALMEIDA NUNES",m:"Rua Castilho Nr. 39",lat:38.7230,lng:-9.1552},
   {n:"VAN AMEYDE (PORTUGAL) - SOCIEDADE REGULADORA DE SINISTROS, S.A.",g:"PIET MIDDELKOOP",m:"Rua Ivone Silva, Nr. 6",lat:38.7353,lng:-9.1472},
   {n:"VEP ACTUÁRIOS, UNIPESSOAL LDA",g:"ABRAHAM ERNESTO HERNANDEZ PACHECO",m:"Campo Grande, Nr. 35",lat:38.7539,lng:-9.1567},
   {n:"CBK LISBOA - MEDIADORES DE SEGUROS, LDA",g:"JOÃO WELSH",m:"Rua Rodrigues Sampaio, Nr. 19",lat:38.7233,lng:-9.1448},
-  {n:"GO FAR INSURANCE - SOLUÇÕES SERV. PROTECÇÃO DA SAÚDE, MED.SEGUROS,S.A",g:"EMA ISABEL GOUVEIA MARTINS PAULINO PIRES",m:"Rua Marechal Saldanha, Nr. 1",lat:38.7285,lng:-9.1471},
+  {n:"GO FAR INSURANCE",g:"EMA ISABEL GOUVEIA MARTINS PAULINO PIRES",m:"Rua Marechal Saldanha, Nr. 1",lat:38.7285,lng:-9.1471},
   {n:"DENCIO-MEDIAÇÃO DE SEGUROS, LDA.",g:"LUIS MANUEL FERREIRA PINTO",m:"Av. Defensores De Chaves Nr. 21",lat:38.7305,lng:-9.1439},
   {n:"MFO - MEDIAÇÃO DE SEGUROS, LDA",g:"CARLOS JOAQUIM ANJOS GALHETO DE CARVALHO",m:"Rua Tierno Galvan - Amoreiras Nr. 10",lat:38.7199,lng:-9.1569},
   {n:"CED PORTUGAL, UNIPESSOAL, LDA",g:"JAN-WILLEM MARTINUS WOLFFENBUTTEL",m:"Rua Dos Lagares D'El Rei Nr. 19",lat:38.7127,lng:-9.1392},
@@ -261,7 +301,7 @@ const CO = [
   {n:"DUOSEG - MEDIAÇÃO DE SEGUROS, LDA",g:"ANTONIO MIGUEL LIBORIO DA COSTA AGOSTINHO",m:"Rua Francisco Stromp Lt. B4",lat:38.7478,lng:-9.1614},
   {n:"METASEGUROS - SOCIEDADE MEDIADORA DE SEGUROS, LDA",g:"HELDER ANTONIO MENDES LANÇA",m:"Passagem Do Adamastor, Nr. 14/B",lat:38.7058,lng:-9.1440},
   {n:"SIRIUS - MEDIAÇÃO DE SEGUROS, LDA.",g:"NUNO MIGUEL MACHADO FERNANDES SIMÕES VENTURA",m:"Rua José D'Esaguy Nr. 12",lat:38.7420,lng:-9.1589},
-  {n:"ARCHER & CIA., CORRETORES DE SEGUROS, LDA",g:"MARIANA CORREIA LAGE PORTELA MORAIS BORGES DE CARVALHO",m:"Av. Liberdade Nr. 90",lat:38.7193,lng:-9.1436},
+  {n:"ARCHER & CIA., CORRETORES DE SEGUROS, LDA",g:"MARIANA CORREIA LAGE PORTELA MORAIS BORGES DE CARVALHO",m:"Av. Liberdade Nr. 90",lat:38.7195,lng:-9.1436},
   {n:"COMPARADOR.PT, UNIPESSOAL, LDA",g:"",m:"Av. Da Liberdade Nr. 129 B",lat:38.7183,lng:-9.1424},
   {n:"BRUNO CARRADA - MEDIAÇÃO DE SEGUROS, UNIPESSOAL LDA",g:"BRUNO MIGUEL CARRADA GONÇALVES",m:"Praça De Londres Nr. 10 B",lat:38.7388,lng:-9.1305},
   {n:"INAVESTE MEDIAÇÃO DE SEGUROS UNIPESSOAL, LDA",g:"BENJAMIN JEAN ARTHUR VERLINGUE",m:"Rua Silva E Albuquerque Nr. 17",lat:38.7297,lng:-9.1552},
@@ -283,7 +323,7 @@ const CO = [
   {n:"PEDRO BELMONTE, UNIPESSOAL LDA",g:"PEDRO ANTONIO BELMONTE TRAVASSOS",m:"Porta Do Mar, Nr. 4 B",lat:38.7082,lng:-9.1368},
   {n:"AUDAXFIRMUS - MEDIAÇÃO DE SEGUROS, LDA.",g:"ANTONIO MANUEL SERODIO PEREIRA",m:"Rua Hermano Neves Nr. 22",lat:38.7228,lng:-9.1498},
   {n:"2DO INSURANCE, UNIPESSOAL, LDA",g:"TELMO CHAGAS MONTEIRO",m:"Av. Fontes Pereira De Melo, Nr. 16",lat:38.7252,lng:-9.1479},
-  {n:"PROTESTE SEGUROS, MEDIAÇÃO DE SEGUROS, SOCIEDADE UNIPESSOAL LDA",g:"ROLAND JACQUES LEON COUNYE",m:"Av. Engº Arantes E Oliveira Nr. 13",lat:38.7352,lng:-9.1332},
+  {n:"PROTESTE SEGUROS, MEDIAÇÃO DE SEGUROS, UNIPESSOAL LDA",g:"ROLAND JACQUES LEON COUNYE",m:"Av. Engº Arantes E Oliveira Nr. 13",lat:38.7352,lng:-9.1332},
   {n:"TUTELA - MEDIAÇÃO DE SEGUROS, LDA.",g:"NUNO MIGUEL LOPES DE OLIVEIRA",m:"Av. Gomes Pereira Nr. 69-B",lat:38.7438,lng:-9.1858},
   {n:"CONTACTLIFE - MEDIAÇÃO DE SEGUROS, LDA",g:"ANA CATARINA DIAS MOREIRA MOURA RIBEIRO",m:"Rua Do Vale De Stº António Nr. 163",lat:38.7162,lng:-9.1298},
   {n:"MARGEM - MEDIAÇÃO DE SEGUROS, LDA.",g:"SEBASTIEN ALBERT ALFRED HAQUETTE",m:"Rua Frederico George, Natura Towers, Nr. 37",lat:38.7538,lng:-9.1728},
@@ -309,307 +349,278 @@ const CO = [
   {n:"SAFE DAYS, LDA",g:"ISABEL ALEXANDRA GOMES DIAS PARREIRA",m:"Rua Drº Oliveira Ramos Nr. 23-A",lat:38.7118,lng:-9.1738},
   {n:"ALBUQUERQUE-MEDIADORES DE SEGUROS, LDA",g:"RICARDO MIGUEL VICENTE NOBRE",m:"Rua Antero De Quental Nr. 35-D",lat:38.7108,lng:-9.1568},
   {n:"CODIGOSEGUR - MEDIAÇÃO SEGUROS, LDA.",g:"DIOGO LOPES DE ALMEIDA BAPTISTA",m:"Rua João De Freitas Branco Nr. 16-A",lat:38.7128,lng:-9.1728},
-  {n:"SANO-SEGUROS-SOCIEDADE MEDIADORA DE SEGUROS, UNIPESSOAL, LDA",g:"MANUEL EUGENIO MACHADO MACEDO",m:"Praça Príncipe Perfeito Nr. 2",lat:38.7258,lng:-9.1398},
+  {n:"SANO-SEGUROS - MEDIADORA DE SEGUROS, UNIPESSOAL, LDA",g:"MANUEL EUGENIO MACHADO MACEDO",m:"Praça Príncipe Perfeito Nr. 2",lat:38.7258,lng:-9.1398},
   {n:"LEAN - MEDIAÇÃO DE SEGUROS, LDA",g:"TIAGO DE CAMPOS COSTA LINO",m:"Rua Fernando Lopes Graça Nr. 18a",lat:38.7038,lng:-9.1658},
   {n:"COIMBRA DUARTE - MEDIAÇÃO DE SEGUROS, LDA",g:"LISETE DE MATOS DUARTE",m:"Rua Francisco Baia Nr. 10-D",lat:38.7448,lng:-9.1618},
   {n:"4QMS, LDA",g:"CARLA MARIA SILVA QUENTAL",m:"Estrada Da Luz Nr. 169",lat:38.7498,lng:-9.1888}
 ];
 
-// ═══════════════════════════════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════════════════════════════
-let ST = JSON.parse(localStorage.getItem('st_v2') || '{}');
-// ST[i] = {v: bool, notes: '', photos: [], ts: timestamp}
-function gs(i){ return ST[i] || {v:false,notes:'',photos:[]} }
-function ss(){ localStorage.setItem('st_v2', JSON.stringify(ST)) }
+// ── STATE ────────────────────────────────────────────────────────────
+let ST = JSON.parse(localStorage.getItem('st_v3') || '{}');
+const gs  = i => ST[i] || {v:false,notes:'',photos:[]};
+const ss  = () => localStorage.setItem('st_v3', JSON.stringify(ST));
+const pri = i => i < PRIORITY;
 
-let markers=[], map, selIdx=-1, curFilter='all', curSearch='';
+let map, tile, markers = [];
+let selIdx = -1, curFilter = 'all', curSearch = '', mapStyle = 'dark';
 
-// ═══════════════════════════════════════════════════════════════════
-// SETUP
-// ═══════════════════════════════════════════════════════════════════
-function skipSetup(){ document.getElementById('setup').style.display='none'; initMap(); }
-function saveGID(){
-  const url = document.getElementById('gid-in').value.trim();
-  if(!url){ toast('Cola o URL da Apps Script'); return; }
-  SHEET_URL = url;
-  localStorage.setItem('sheet_url', url);
-  document.getElementById('setup').style.display='none';
-  initMap();
-  syncFromSheet();
+// ── ICONS ────────────────────────────────────────────────────────────
+function mkIcon(i, sel) {
+  const s = gs(i), v = s.v, p = pri(i);
+  const fill   = v ? '#22c55e' : p ? '#c9a227' : '#4f8ef7';
+  const shadow = v ? '#15803d' : p ? '#a88418' : '#2563eb';
+  const ring   = sel ? `<circle cx="16" cy="14" r="13" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="2.5"/>` : '';
+  const inner  = v
+    ? `<path d="M11 14l3 3 5.5-5.5" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
+    : p ? `<circle cx="16" cy="14" r="2.8" fill="rgba(255,255,255,.85)"/><circle cx="16" cy="14" r="1.1" fill="${fill}"/>`
+    :     `<circle cx="16" cy="14" r="3" fill="rgba(255,255,255,.85)"/>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="44" viewBox="0 0 32 44">
+    <defs><filter id="f"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="${shadow}" flood-opacity=".5"/></filter></defs>
+    <g filter="url(#f)">
+      <path d="M16 2C9.4 2 4 7.4 4 15c0 10 12 25 12 25S28 25 28 15C28 7.4 22.6 2 16 2z" fill="${fill}"/>
+      ${ring}${inner}
+    </g></svg>`;
+  return L.divIcon({html:svg,className:'',iconSize:[32,44],iconAnchor:[16,44],popupAnchor:[0,-46]});
 }
-// Auto-skip if already configured
-window.addEventListener('DOMContentLoaded', () => {
-  if(SHEET_URL){ document.getElementById('setup').style.display='none'; }
+
+// ── MAP INIT ─────────────────────────────────────────────────────────
+function initMap() {
+  map = L.map('map', {zoomControl:true, attributionControl:false, preferCanvas:true})
+         .setView([38.727, -9.150], 13);
+  map.zoomControl.setPosition('bottomright');
+  tile = L.tileLayer(TILES.dark, {maxZoom:19}).addTo(map);
+  CO.forEach((c,i) => {
+    const mk = L.marker([c.lat,c.lng], {icon:mkIcon(i,false)}).addTo(map);
+    mk.bindPopup(popup(i), {maxWidth:270});
+    mk.on('click', () => selMarker(i));
+    markers.push(mk);
+  });
+  renderList(); updateStats(); syncFromSheet();
+}
+
+function popup(i) {
+  const c = CO[i], s = gs(i);
+  return `${pri(i)?'<div class="ppri">⭐ Prioritária</div>':''}
+    <div class="pn">${c.n}</div>
+    <div class="pg">👤 ${c.g||'—'}</div>
+    <div class="pa2">📍 ${c.m}</div>
+    ${s.v?'<div style="color:var(--green);font-size:11px;font-weight:600;margin-bottom:8px">✓ Visitada</div>':''}
+    <button class="pb" onclick="openDetail(${i})">Ver detalhes →</button>`;
+}
+
+// ── MAP SWITCHER ─────────────────────────────────────────────────────
+document.querySelectorAll('.ms').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const s = btn.dataset.s;
+    if (s === mapStyle) return;
+    mapStyle = s;
+    document.querySelectorAll('.ms').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    const el = document.getElementById('map');
+    el.style.opacity = '.4';
+    tile.setUrl(TILES[s]);
+    tile.once('load', () => { el.style.opacity = '1'; });
+    setTimeout(() => { el.style.opacity = '1'; }, 800);
+  });
 });
 
-// ═══════════════════════════════════════════════════════════════════
-// SYNC with Google Sheets Apps Script
-// ═══════════════════════════════════════════════════════════════════
-let syncTimer;
-function setSyncDot(s){ const d=document.getElementById('sync-dot'); d.className=''; d.classList.add(s); }
+// ── SYNC ─────────────────────────────────────────────────────────────
+const dot = s => { document.getElementById('sync-dot').className = s; };
 
-async function syncFromSheet(){
-  if(!SHEET_URL) return;
-  setSyncDot('syncing');
+async function syncFromSheet() {
+  dot('syncing');
   try {
     const r = await fetch(SHEET_URL, {cache:'no-store'});
     const data = await r.json();
     data.forEach(row => {
       const i = parseInt(row.idx);
-      if(isNaN(i)||i<0||i>=CO.length) return;
-      if(!ST[i]) ST[i]={v:false,notes:'',photos:[]};
-      ST[i].v = row.visited === true || row.visited === 'TRUE' || row.visited === 'true';
-      if(row.notes && !ST[i].notes) ST[i].notes = row.notes;
+      if (isNaN(i)||i<0||i>=CO.length) return;
+      if (!ST[i]) ST[i] = {v:false,notes:'',photos:[]};
+      ST[i].v = row.visited===true||row.visited==='TRUE'||row.visited==='true';
+      if (row.notes && !ST[i].notes) ST[i].notes = row.notes;
     });
-    ss(); renderList(); updateStats(); refreshMarkers();
-    setSyncDot('ok');
-  } catch(e){ setSyncDot('err'); }
+    ss(); renderList(); updateStats(); refreshMarkers(); dot('ok');
+  } catch(e) { dot('err'); }
 }
 
-async function pushToSheet(i){
-  if(!SHEET_URL) return;
-  setSyncDot('syncing');
+async function pushToSheet(i) {
+  dot('syncing');
   try {
     const s = gs(i);
-    // Use URL params to avoid CORS preflight issues with Apps Script
-    const params = new URLSearchParams({
-      action: 'set',
-      idx: i,
-      visited: s.v,
-      notes: s.notes || '',
-      name: CO[i].n
-    });
-    await fetch(SHEET_URL + '?' + params.toString(), {method:'GET', cache:'no-store'});
-    setSyncDot('ok');
-    // Re-fetch after a short delay to confirm
+    const p = new URLSearchParams({idx:i, visited:s.v, notes:s.notes||'', name:CO[i].n});
+    await fetch(SHEET_URL+'?'+p.toString(), {cache:'no-store'});
+    dot('ok');
     setTimeout(syncFromSheet, 2000);
-  } catch(e){ setSyncDot('err'); }
+  } catch(e) { dot('err'); }
+}
+setInterval(syncFromSheet, 60000);
+
+// ── MARKERS ──────────────────────────────────────────────────────────
+function refreshMarkers() {
+  CO.forEach((_,i) => markers[i]?.setIcon(mkIcon(i, i===selIdx)));
+}
+function selMarker(i) {
+  if (selIdx >= 0) markers[selIdx].setIcon(mkIcon(selIdx, false));
+  selIdx = i;
+  markers[i].setIcon(mkIcon(i, true));
+  openDetail(i); renderList();
 }
 
-// Auto sync every 60s
-setInterval(()=>{ if(SHEET_URL) syncFromSheet(); }, 60000);
-
-// ═══════════════════════════════════════════════════════════════════
-// MAP
-// ═══════════════════════════════════════════════════════════════════
-function mkIcon(visited, sel){
-  const c = visited ? '#22c55e' : '#4f8ef7';
-  const ring = sel ? `<circle cx="16" cy="13" r="13" fill="none" stroke="white" stroke-width="2.5" opacity=".7"/>` : '';
-  const check = visited ? `<path d="M11 13l3 3 5-5" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : '';
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42"><filter id="sh"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-opacity=".4"/></filter><g filter="url(#sh)"><path d="M16 2C9.4 2 4 7.4 4 14c0 9.5 12 24 12 24S28 23.5 28 14C28 7.4 22.6 2 16 2z" fill="${c}"/>${ring}${check}</g></svg>`;
-  return L.divIcon({html:svg,className:'',iconSize:[32,42],iconAnchor:[16,42],popupAnchor:[0,-44]});
-}
-
-function initMap(){
-  map = L.map('map',{zoomControl:true,attributionControl:false}).setView([38.727,-9.150],13);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
-  CO.forEach((c,i)=>{
-    const s=gs(i);
-    const mk=L.marker([c.lat,c.lng],{icon:mkIcon(s.v,false)}).addTo(map);
-    mk.bindPopup(`<div class="pn">${c.n}</div><div class="pg">👤 ${c.g||'—'}</div><div class="pa2">📍 ${c.m}</div><button class="pb" onclick="openDetail(${i})">Ver detalhes</button>`,{maxWidth:260});
-    mk.on('click',()=>selMarker(i));
-    markers.push(mk);
-  });
-  renderList(); updateStats();
-  if(SHEET_URL) syncFromSheet();
-}
-
-function refreshMarkers(){
-  CO.forEach((_,i)=>{ markers[i]&&markers[i].setIcon(mkIcon(gs(i).v, i===selIdx)); });
-}
-
-function selMarker(i){
-  if(selIdx>=0) markers[selIdx].setIcon(mkIcon(gs(selIdx).v,false));
-  selIdx=i;
-  markers[i].setIcon(mkIcon(gs(i).v,true));
-  openDetail(i);
-  renderList();
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// DETAIL
-// ═══════════════════════════════════════════════════════════════════
-window.openDetail = function(i){
-  selIdx=i;
-  const c=CO[i], s=gs(i);
-  document.getElementById('sh-name').textContent=c.n;
-  document.getElementById('sh-ger').textContent = c.g ? '👤 '+c.g : '👤 Responsável não indicado';
+// ── DETAIL ────────────────────────────────────────────────────────────
+window.openDetail = function(i) {
+  selIdx = i;
+  const c = CO[i], s = gs(i);
+  document.getElementById('sh-pri').classList.toggle('show', pri(i));
+  document.getElementById('sh-name').textContent = c.n;
+  document.getElementById('sh-ger').textContent  = c.g ? '👤 '+c.g : '👤 Responsável não indicado';
   document.getElementById('sh-addr').textContent = '📍 '+c.m;
   document.getElementById('sh-notes').value = s.notes||'';
-  const bv=document.getElementById('btn-visit');
+  const bv = document.getElementById('btn-visit');
   bv.textContent = s.v ? '✓ Visitada' : '○ Marcar visitada';
-  bv.className = s.v ? 'ab succ' : 'ab';
-  document.getElementById('sh-sync-status').textContent = SHEET_URL ? '🔗 Sincronizado com a equipa' : '📱 Apenas neste dispositivo';
-  document.getElementById('btn-maps').onclick=()=>window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.m+', Lisboa, Portugal')}`);
-  document.getElementById('btn-visit').onclick=()=>toggleVisit(i);
+  bv.className   = s.v ? 'ab succ' : 'ab';
+  bv.onclick     = () => toggleVisit(i);
+  document.getElementById('btn-maps').onclick = () =>
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.m+', Lisboa, Portugal')}`);
   renderPhotos(i);
   document.getElementById('sheet').classList.add('open');
   document.getElementById('overlay').classList.add('open');
-  // fly map
-  map && map.flyTo([c.lat,c.lng],16,{duration:.7});
+  map?.flyTo([c.lat,c.lng], 16, {duration:.7});
 };
 
-function closeSheet(){
+function closeSheet() {
   document.getElementById('sheet').classList.remove('open');
   document.getElementById('overlay').classList.remove('open');
 }
+document.getElementById('sh-close').onclick = closeSheet;
+document.getElementById('overlay').onclick  = closeSheet;
 
-function toggleVisit(i){
-  if(!ST[i]) ST[i]={v:false,notes:'',photos:[]};
-  ST[i].v=!ST[i].v;
-  ST[i].ts=Date.now();
-  ss();
-  const s=gs(i);
-  const bv=document.getElementById('btn-visit');
-  bv.textContent=s.v?'✓ Visitada':'○ Marcar visitada';
-  bv.className=s.v?'ab succ':'ab';
-  markers[i]&&markers[i].setIcon(mkIcon(s.v,true));
+function toggleVisit(i) {
+  if (!ST[i]) ST[i] = {v:false,notes:'',photos:[]};
+  ST[i].v = !ST[i].v; ST[i].ts = Date.now(); ss();
+  const s = gs(i);
+  const bv = document.getElementById('btn-visit');
+  bv.textContent = s.v ? '✓ Visitada' : '○ Marcar visitada';
+  bv.className   = s.v ? 'ab succ' : 'ab';
+  markers[i]?.setIcon(mkIcon(i,true));
+  markers[i]?.setPopupContent(popup(i));
   renderList(); updateStats();
-  toast(s.v?'✓ Marcada como visitada':'Desmarcada');
+  toast(s.v ? '✓ Marcada como visitada' : 'Visita removida');
   pushToSheet(i);
 }
 
-window.saveNotes = function(){
-  if(selIdx<0) return;
-  if(!ST[selIdx]) ST[selIdx]={v:false,notes:'',photos:[]};
-  ST[selIdx].notes=document.getElementById('sh-notes').value;
+window.saveNotes = function() {
+  if (selIdx < 0) return;
+  if (!ST[selIdx]) ST[selIdx] = {v:false,notes:'',photos:[]};
+  ST[selIdx].notes = document.getElementById('sh-notes').value;
   ss(); pushToSheet(selIdx);
-  toast('Notas guardadas');
-  closeSheet();
+  toast('Notas guardadas'); closeSheet();
 };
 
-document.getElementById('sh-close').onclick=closeSheet;
-document.getElementById('overlay').onclick=closeSheet;
-
-// ═══════════════════════════════════════════════════════════════════
-// PHOTOS — upload para Google Drive via Apps Script
-// ═══════════════════════════════════════════════════════════════════
-function renderPhotos(i){
-  const s=gs(i), wrap=document.getElementById('sh-photos');
-  wrap.innerHTML='';
-  (s.photos||[]).forEach((photo,pi)=>{
-    const img=document.createElement('img');
-    img.className='pt';
-    // photo pode ser URL do Drive ou base64 local
-    img.src = photo.startsWith('http') ? photo : photo;
-    img.onclick=()=>openLB(img.src);
-    wrap.appendChild(img);
+// ── PHOTOS ────────────────────────────────────────────────────────────
+function renderPhotos(i) {
+  const s = gs(i), wrap = document.getElementById('sh-photos');
+  wrap.innerHTML = '';
+  (s.photos||[]).forEach(src => {
+    const img = document.createElement('img');
+    img.className = 'pt'; img.src = src; img.loading = 'lazy';
+    img.onclick = () => openLB(src); wrap.appendChild(img);
   });
-  const a=document.createElement('div');
-  a.className='pa'; a.innerHTML='<span style="font-size:20px">📷</span>';
-  a.onclick=()=>document.getElementById('photo-in').click();
+  const a = document.createElement('div');
+  a.className = 'pa';
+  a.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>Foto</span>';
+  a.onclick = () => document.getElementById('photo-in').click();
   wrap.appendChild(a);
-  // loading indicator placeholder
-  const loadEl = document.createElement('div');
-  loadEl.id='photo-loading'; loadEl.style.cssText='display:none;font-size:11px;color:var(--muted);align-self:center;padding:4px';
-  loadEl.textContent='A enviar…';
-  wrap.appendChild(loadEl);
 }
 
-document.getElementById('photo-in').onchange=function(e){
-  if(selIdx<0) return;
-  if(!ST[selIdx]) ST[selIdx]={v:false,notes:'',photos:[]};
+document.getElementById('photo-in').onchange = async function(e) {
+  if (selIdx < 0) return;
+  if (!ST[selIdx]) ST[selIdx] = {v:false,notes:'',photos:[]};
   const files = Array.from(e.target.files);
-  if(!files.length) return;
-  const loadEl = document.getElementById('photo-loading');
-  if(loadEl) loadEl.style.display='block';
-  let done=0;
-  files.forEach(f=>{
-    const r=new FileReader();
-    r.onload=async ev=>{
-      const b64 = ev.target.result; // data:image/jpeg;base64,...
-      // Tenta fazer upload para o Drive
-      try {
-        const base64data = b64.split(',')[1];
-        const mimeType = b64.split(';')[0].split(':')[1];
-        const params = new URLSearchParams({
-          action:'photo',
-          idx: selIdx,
-          name: CO[selIdx].n,
-          mime: mimeType,
-          data: base64data
-        });
-        const resp = await fetch(SHEET_URL+'?'+params.toString());
-        const json = await resp.json();
-        if(json.url){
-          ST[selIdx].photos.push(json.url);
-        } else {
-          // fallback: guarda local
-          ST[selIdx].photos.push(b64);
-        }
-      } catch(_){
-        // fallback local se falhar
-        ST[selIdx].photos.push(b64);
-      }
-      done++;
-      if(done===files.length){
-        ss(); renderPhotos(selIdx);
-        if(loadEl) loadEl.style.display='none';
-      }
-    };
-    r.readAsDataURL(f);
-  });
-  this.value='';
+  if (!files.length) return;
+  const upEl = document.getElementById('photo-up');
+  upEl.classList.add('show');
+  for (const f of files) {
+    await new Promise(res => {
+      const r = new FileReader();
+      r.onload = async ev => {
+        const b64 = ev.target.result;
+        try {
+          const p = new URLSearchParams({action:'photo', idx:selIdx, name:CO[selIdx].n, mime:b64.split(';')[0].split(':')[1], data:b64.split(',')[1]});
+          const resp = await fetch(SHEET_URL+'?'+p.toString());
+          const json = await resp.json();
+          ST[selIdx].photos.push(json.url || b64);
+        } catch(_) { ST[selIdx].photos.push(b64); }
+        res();
+      };
+      r.readAsDataURL(f);
+    });
+  }
+  ss(); renderPhotos(selIdx);
+  upEl.classList.remove('show');
+  toast(`📷 ${files.length} foto${files.length>1?'s':''} guardada${files.length>1?'s':''}`);
+  this.value = '';
 };
 
-function openLB(src){ document.getElementById('lb-img').src=src; document.getElementById('lb').classList.add('open'); }
-window.closeLB=()=>document.getElementById('lb').classList.remove('open');
+function openLB(src) { document.getElementById('lb-img').src = src; document.getElementById('lb').classList.add('open'); }
+window.closeLB = () => document.getElementById('lb').classList.remove('open');
 
-// ═══════════════════════════════════════════════════════════════════
-// LIST
-// ═══════════════════════════════════════════════════════════════════
-function renderList(){
-  const q=curSearch.toLowerCase(), list=document.getElementById('list');
-  list.innerHTML='';
-  CO.forEach((c,i)=>{
-    const s=gs(i);
-    if(curFilter==='yes'&&!s.v) return;
-    if(curFilter==='no'&&s.v) return;
-    if(q&&!c.n.toLowerCase().includes(q)&&!c.g.toLowerCase().includes(q)&&!c.m.toLowerCase().includes(q)) return;
-    const d=document.createElement('div');
-    d.className='card'+(s.v?' done':'')+(i===selIdx?' sel':'');
-    d.innerHTML=`<div class="cnum">#${String(i+1).padStart(2,'0')}</div><div class="cn">${c.n}</div><div class="cm">${c.g?'👤 '+c.g+'<br>':''}📍 ${c.m}</div><span class="cbadge ${s.v?'done':'pend'}">${s.v?'✓':'○'}</span>`;
-    d.onclick=()=>{ selMarker(i); if(window.innerWidth<=680) document.getElementById('panel').classList.remove('open'); };
-    list.appendChild(d);
+// ── LIST ──────────────────────────────────────────────────────────────
+function renderList() {
+  const q = curSearch.toLowerCase(), list = document.getElementById('list');
+  list.innerHTML = '';
+  let count = 0;
+  CO.forEach((c,i) => {
+    const s = gs(i), p = pri(i);
+    if (curFilter==='yes' && !s.v) return;
+    if (curFilter==='no'  &&  s.v) return;
+    if (curFilter==='pri' &&   !p) return;
+    if (q && !c.n.toLowerCase().includes(q) && !c.g.toLowerCase().includes(q) && !c.m.toLowerCase().includes(q)) return;
+    const d = document.createElement('div');
+    d.className = `card${s.v?' done':''}${p?' pri':''}${i===selIdx?' sel':''}`;
+    const badge = s.v ? `<span class="cbadge done">✓ Visitada</span>`
+                : p   ? `<span class="cbadge pri">⭐ Prior.</span>`
+                :        `<span class="cbadge pend">Por visitar</span>`;
+    d.innerHTML = `<div class="cnum">#${String(i+1).padStart(2,'0')}</div>
+      <div class="card-top"><div class="cn">${c.n}</div>${badge}</div>
+      <div class="cm">${c.g?'👤 '+c.g+' · ':''}📍 ${c.m}</div>`;
+    d.onclick = () => {
+      selMarker(i);
+      map.flyTo([c.lat,c.lng], 16, {duration:.7});
+      if (window.innerWidth <= 680) document.getElementById('panel').classList.remove('open');
+    };
+    list.appendChild(d); count++;
   });
+  if (!count) list.innerHTML = '<div id="empty">Nenhuma empresa encontrada</div>';
 }
 
-function updateStats(){
-  const v=CO.filter((_,i)=>gs(i).v).length, t=CO.length;
-  document.getElementById('sv').textContent=v;
-  document.getElementById('st').textContent=t;
-  document.getElementById('prog-bar').style.width=(v/t*100)+'%';
-  document.getElementById('pl-n').textContent=v+' visitadas';
-  document.getElementById('pl-p').textContent=Math.round(v/t*100)+'%';
+function updateStats() {
+  const v = CO.filter((_,i) => gs(i).v).length, t = CO.length;
+  document.getElementById('sv').textContent = v;
+  document.getElementById('st').textContent = t;
+  document.getElementById('prog-bar').style.width = (v/t*100)+'%';
+  document.getElementById('pl-n').textContent = v+' visitadas';
+  document.getElementById('pl-p').textContent = Math.round(v/t*100)+'%';
 }
 
-document.getElementById('search').oninput=function(){ curSearch=this.value; renderList(); };
-document.querySelectorAll('.fb').forEach(b=>{
-  b.onclick=function(){
-    document.querySelectorAll('.fb').forEach(x=>x.classList.remove('on'));
-    this.classList.add('on'); curFilter=this.dataset.f; renderList();
+// ── CONTROLS ──────────────────────────────────────────────────────────
+document.getElementById('search').oninput = function() { curSearch = this.value; renderList(); };
+document.querySelectorAll('.fb').forEach(b => {
+  b.onclick = function() {
+    document.querySelectorAll('.fb').forEach(x => x.classList.remove('on'));
+    this.classList.add('on'); curFilter = this.dataset.f; renderList();
   };
 });
+document.getElementById('btn-lista').onclick = () => document.getElementById('panel').classList.toggle('open');
 
-document.getElementById('btn-lista').onclick=()=>{
-  document.getElementById('panel').classList.toggle('open');
-};
-
-// ═══════════════════════════════════════════════════════════════════
-// TOAST
-// ═══════════════════════════════════════════════════════════════════
-let toastT;
-function toast(msg){
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.classList.add('show');
-  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2200);
+// ── TOAST ─────────────────────────────────────────────────────────────
+let tt;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(tt); tt = setTimeout(() => el.classList.remove('show'), 2400);
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// START
-// ═══════════════════════════════════════════════════════════════════
-document.getElementById('setup').style.display='none';
+// ── START ─────────────────────────────────────────────────────────────
 initMap();
 </script>
 </body>
