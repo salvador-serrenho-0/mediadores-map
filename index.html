@@ -41,7 +41,7 @@ html,body{height:100%;height:100dvh;overflow:hidden;font-family:'DM Sans',sans-s
 /* PANEL */
 #panel{width:340px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;transition:transform .28s cubic-bezier(.4,0,.2,1)}
 @media(max-width:680px){
-  #panel{position:fixed;top:52px;left:0;right:0;bottom:0;width:100%;z-index:300;transform:translateX(100%)}
+  #panel{position:fixed;top:52px;left:0;right:0;bottom:0;width:100%;z-index:600;transform:translateX(100%)}
   #panel.open{transform:translateX(0)}
 }
 #panel-head{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
@@ -483,28 +483,71 @@ document.getElementById('sh-close').onclick=closeSheet;
 document.getElementById('overlay').onclick=closeSheet;
 
 // ═══════════════════════════════════════════════════════════════════
-// PHOTOS
+// PHOTOS — upload para Google Drive via Apps Script
 // ═══════════════════════════════════════════════════════════════════
 function renderPhotos(i){
   const s=gs(i), wrap=document.getElementById('sh-photos');
   wrap.innerHTML='';
-  (s.photos||[]).forEach(src=>{
+  (s.photos||[]).forEach((photo,pi)=>{
     const img=document.createElement('img');
-    img.className='pt'; img.src=src;
-    img.onclick=()=>openLB(src); wrap.appendChild(img);
+    img.className='pt';
+    // photo pode ser URL do Drive ou base64 local
+    img.src = photo.startsWith('http') ? photo : photo;
+    img.onclick=()=>openLB(img.src);
+    wrap.appendChild(img);
   });
   const a=document.createElement('div');
-  a.className='pa'; a.textContent='+';
+  a.className='pa'; a.innerHTML='<span style="font-size:20px">📷</span>';
   a.onclick=()=>document.getElementById('photo-in').click();
   wrap.appendChild(a);
+  // loading indicator placeholder
+  const loadEl = document.createElement('div');
+  loadEl.id='photo-loading'; loadEl.style.cssText='display:none;font-size:11px;color:var(--muted);align-self:center;padding:4px';
+  loadEl.textContent='A enviar…';
+  wrap.appendChild(loadEl);
 }
 
 document.getElementById('photo-in').onchange=function(e){
   if(selIdx<0) return;
   if(!ST[selIdx]) ST[selIdx]={v:false,notes:'',photos:[]};
-  Array.from(e.target.files).forEach(f=>{
+  const files = Array.from(e.target.files);
+  if(!files.length) return;
+  const loadEl = document.getElementById('photo-loading');
+  if(loadEl) loadEl.style.display='block';
+  let done=0;
+  files.forEach(f=>{
     const r=new FileReader();
-    r.onload=ev=>{ ST[selIdx].photos.push(ev.target.result); ss(); renderPhotos(selIdx); };
+    r.onload=async ev=>{
+      const b64 = ev.target.result; // data:image/jpeg;base64,...
+      // Tenta fazer upload para o Drive
+      try {
+        const base64data = b64.split(',')[1];
+        const mimeType = b64.split(';')[0].split(':')[1];
+        const params = new URLSearchParams({
+          action:'photo',
+          idx: selIdx,
+          name: CO[selIdx].n,
+          mime: mimeType,
+          data: base64data
+        });
+        const resp = await fetch(SHEET_URL+'?'+params.toString());
+        const json = await resp.json();
+        if(json.url){
+          ST[selIdx].photos.push(json.url);
+        } else {
+          // fallback: guarda local
+          ST[selIdx].photos.push(b64);
+        }
+      } catch(_){
+        // fallback local se falhar
+        ST[selIdx].photos.push(b64);
+      }
+      done++;
+      if(done===files.length){
+        ss(); renderPhotos(selIdx);
+        if(loadEl) loadEl.style.display='none';
+      }
+    };
     r.readAsDataURL(f);
   });
   this.value='';
