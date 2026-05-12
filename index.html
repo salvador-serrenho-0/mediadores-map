@@ -227,7 +227,7 @@ html,body{height:100%;height:100dvh;overflow:hidden;font-family:'DM Sans',sans-s
 // ═══════════════════════════════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════════════════════════════
-let SHEET_URL = localStorage.getItem('sheet_url') || '';
+let SHEET_URL = 'https://script.google.com/macros/s/AKfycbz6o3d6LjjTnM53ZWnc1a1E8ut9OncM6iAsUDkEsE8R4RI_cOtGhzMb6nrBrtVIZMAl/exec';
 
 // ═══════════════════════════════════════════════════════════════════
 // DATA — 80 empresas Lisboa
@@ -558,7 +558,8 @@ function toast(msg){
 // ═══════════════════════════════════════════════════════════════════
 // START
 // ═══════════════════════════════════════════════════════════════════
-if(SHEET_URL){ document.getElementById('setup').style.display='none'; initMap(); }
+document.getElementById('setup').style.display='none';
+initMap();
 </script>
 </body>
 </html>
