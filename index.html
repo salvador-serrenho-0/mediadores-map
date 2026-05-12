@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f1117">
+<title>Mediadores Lisboa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a; --border: #2e3347;
+  --text: #e8eaf0; --muted: #7b82a0; --accent: #4f8ef7; --green: #22c55e;
+  --red: #ef4444; --orange: #f59e0b;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;height:100dvh;overflow:hidden;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text)}
+
+/* TOPBAR */
+#topbar{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;position:relative;z-index:400}
+#topbar h1{font-size:13px;font-weight:600;flex:1;letter-spacing:.02em}
+#topbar h1 span{color:var(--accent)}
+.pill{font-size:11px;font-family:'DM Mono',monospace;padding:4px 9px;border-radius:20px;border:1px solid var(--border);color:var(--muted);white-space:nowrap}
+.pill b{color:var(--text)}
+#sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
+#sync-dot.syncing{background:var(--orange);animation:pulse 1s infinite}
+#sync-dot.ok{background:var(--green)}
+#sync-dot.err{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+#btn-lista{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 11px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500}
+
+/* LAYOUT */
+#wrap{display:flex;height:calc(100dvh - 52px);overflow:hidden}
+#map-wrap{flex:1;position:relative}
+#map{width:100%;height:100%}
+
+/* PANEL */
+#panel{width:340px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;transition:transform .28s cubic-bezier(.4,0,.2,1)}
+@media(max-width:680px){
+  #panel{position:fixed;top:52px;left:0;right:0;bottom:0;width:100%;z-index:300;transform:translateX(100%)}
+  #panel.open{transform:translateX(0)}
+}
+#panel-head{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+#panel-head h2{font-size:13px;font-weight:600;margin-bottom:2px}
+#panel-head p{font-size:11px;color:var(--muted)}
+
+/* PROGRESS */
+#prog-wrap{padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+#prog-bg{background:var(--surface2);border-radius:3px;height:5px;overflow:hidden}
+#prog-bar{height:100%;background:var(--green);border-radius:3px;transition:width .5s ease;width:0%}
+#prog-label{display:flex;justify-content:space-between;margin-top:5px;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace}
+
+/* SEARCH + FILTERS */
+#search-wrap{padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+#search{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;font-family:inherit;outline:none}
+#search:focus{border-color:var(--accent)}
+#filters{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.fb{flex:1;padding:6px 4px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s;font-weight:500}
+.fb.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* LIST */
+#list{flex:1;overflow-y:auto;padding:8px}
+#list::-webkit-scrollbar{width:3px}
+#list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-bottom:6px;cursor:pointer;transition:border-color .15s;position:relative}
+.card:active{background:var(--border)}
+.card.done{border-left:3px solid var(--green)}
+.card.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)40}
+.cn{font-size:12px;font-weight:600;line-height:1.35;padding-right:64px;margin-bottom:3px}
+.cm{font-size:11px;color:var(--muted);line-height:1.5}
+.cbadge{position:absolute;top:10px;right:10px;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500}
+.cbadge.done{background:#22c55e18;color:var(--green);border:1px solid #22c55e30}
+.cbadge.pend{background:#ef444418;color:#f87171;border:1px solid #ef444430}
+.cnum{font-size:10px;color:#ffffff22;font-family:'DM Mono',monospace;margin-bottom:3px}
+
+/* DETAIL SHEET */
+#sheet{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);border-radius:20px 20px 0 0;padding:0 18px 28px;z-index:500;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-height:88dvh;overflow-y:auto}
+#sheet.open{transform:translateY(0)}
+#sheet::-webkit-scrollbar{display:none}
+#sh-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:14px auto 16px}
+#sh-close{position:absolute;top:16px;right:16px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+#sh-name{font-size:15px;font-weight:600;line-height:1.3;margin-bottom:5px;padding-right:36px}
+#sh-ger{font-size:12px;color:var(--accent);margin-bottom:3px}
+#sh-addr{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.ab{padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .15s;-webkit-appearance:none}
+.ab:active{opacity:.8}
+.ab.prim{background:var(--accent);border-color:var(--accent);color:#fff}
+.ab.succ{background:#15803d;border-color:var(--green);color:#fff}
+.ab.full{grid-column:1/-1}
+#sh-photos{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;min-height:0}
+.pt{width:70px;height:70px;border-radius:8px;object-fit:cover;border:1px solid var(--border);cursor:pointer;flex-shrink:0}
+.pa{width:70px;height:70px;border-radius:8px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:24px;flex-shrink:0;transition:border-color .15s}
+.pa:active{border-color:var(--accent)}
+#photo-in{display:none}
+#sh-notes{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-size:13px;font-family:inherit;resize:none;outline:none;min-height:72px;margin-bottom:10px}
+#sh-notes:focus{border-color:var(--accent)}
+#sh-sync-status{font-size:11px;color:var(--muted);text-align:center;margin-top:6px}
+
+/* TOAST */
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:#1e2235;border:1px solid var(--border);color:var(--text);padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;transition:all .25s;pointer-events:none;z-index:600;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* LIGHTBOX */
+#lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:700;align-items:center;justify-content:center}
+#lb.open{display:flex}
+#lb img{max-width:95vw;max-height:90dvh;border-radius:8px}
+#lb-x{position:absolute;top:16px;right:16px;color:#fff;font-size:28px;cursor:pointer;padding:4px}
+
+/* OVERLAY */
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400}
+#overlay.open{display:block}
+
+/* SETUP MODAL */
+#setup{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:800;display:flex;align-items:center;justify-content:center;padding:20px}
+#setup-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:420px;width:100%}
+#setup-box h2{font-size:16px;font-weight:600;margin-bottom:8px}
+#setup-box p{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:16px}
+#setup-box ol{font-size:12px;color:var(--muted);line-height:1.8;padding-left:18px;margin-bottom:16px}
+#setup-box ol li b{color:var(--text)}
+#gid-in{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-size:13px;font-family:'DM Mono',monospace;outline:none;margin-bottom:10px}
+#gid-in:focus{border-color:var(--accent)}
+#gid-in::placeholder{color:var(--muted)}
+.setup-btns{display:flex;gap:8px}
+.sb{flex:1;padding:11px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s}
+.sb.prim{background:var(--accent);border-color:var(--accent);color:#fff}
+.sb:active{opacity:.8}
+#setup-note{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5}
+
+/* LEAFLET */
+.leaflet-popup-content-wrapper{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.leaflet-popup-tip{background:var(--surface)}
+.leaflet-popup-content{font-family:'DM Sans',sans-serif;font-size:13px;margin:12px 14px}
+.pn{font-weight:600;font-size:13px;margin-bottom:4px;line-height:1.3}
+.pg{font-size:11px;color:var(--accent);margin-bottom:3px}
+.pa2{font-size:11px;color:var(--muted);margin-bottom:10px}
+.pb{background:var(--accent);color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500;width:100%}
+.leaflet-control-zoom{border:1px solid var(--border)!important}
+.leaflet-control-zoom a{background:var(--surface)!important;color:var(--text)!important;border-color:var(--border)!important}
+</style>
+</head>
+<body>
+
+<!-- SETUP MODAL -->
+<div id="setup">
+  <div id="setup-box">
+    <h2>⚙️ Configurar sincronização</h2>
+    <p>Para partilhar o estado de visitas entre toda a equipa, precisas de uma Google Sheet como base de dados. É grátis e leva 2 minutos.</p>
+    <ol>
+      <li>Abre <b>sheets.new</b> no browser</li>
+      <li>Vai a <b>Extensões → Apps Script</b></li>
+      <li>Cola o código do ficheiro <b>apps-script.js</b> que está no mesmo repositório</li>
+      <li>Clica <b>Implementar → Nova implementação → App Web</b></li>
+      <li>Em "Quem tem acesso" escolhe <b>"Qualquer pessoa"</b></li>
+      <li>Copia o <b>URL da implementação</b> e cola abaixo</li>
+    </ol>
+    <input id="gid-in" type="url" placeholder="https://script.google.com/macros/s/…/exec">
+    <div class="setup-btns">
+      <button class="sb" onclick="skipSetup()">Usar offline (sem partilha)</button>
+      <button class="sb prim" onclick="saveGID()">Ligar à Sheet</button>
+    </div>
+    <p id="setup-note">💡 Podes configurar isto mais tarde nas definições. Sem a Sheet, cada telemóvel guarda o seu estado localmente.</p>
+  </div>
+</div>
+
+<div id="topbar">
+  <h1>Mediadores <span>Lisboa</span></h1>
+  <div class="pill">✓ <b id="sv">0</b>/<b id="st">80</b></div>
+  <div id="sync-dot" title="Estado de sincronização"></div>
+  <button id="btn-lista">Lista</button>
+</div>
+
+<div id="wrap">
+  <div id="map-wrap"><div id="map"></div></div>
+  <div id="panel">
+    <div id="panel-head">
+      <h2>Empresas — Lisboa</h2>
+      <p>Toca para ver detalhes · Azul = por visitar · Verde = visitada</p>
+    </div>
+    <div id="prog-wrap">
+      <div id="prog-bg"><div id="prog-bar"></div></div>
+      <div id="prog-label"><span id="pl-n">0 visitadas</span><span id="pl-p">0%</span></div>
+    </div>
+    <div id="search-wrap">
+      <input id="search" type="search" placeholder="🔍 Pesquisar empresa ou gerente…">
+    </div>
+    <div id="filters">
+      <button class="fb on" data-f="all">Todas</button>
+      <button class="fb" data-f="no">Por visitar</button>
+      <button class="fb" data-f="yes">Visitadas</button>
+    </div>
+    <div id="list"></div>
+  </div>
+</div>
+
+<div id="overlay"></div>
+
+<!-- DETAIL SHEET -->
+<div id="sheet">
+  <button id="sh-close">✕</button>
+  <div id="sh-handle"></div>
+  <div id="sh-name"></div>
+  <div id="sh-ger"></div>
+  <div id="sh-addr"></div>
+  <div class="acts">
+    <button class="ab" id="btn-maps">🗺 Navegar</button>
+    <button class="ab" id="btn-visit">○ Marcar visitada</button>
+    <button class="ab prim full" onclick="saveNotes()">💾 Guardar notas</button>
+  </div>
+  <div id="sh-photos"></div>
+  <input type="file" id="photo-in" accept="image/*" capture="environment" multiple>
+  <textarea id="sh-notes" placeholder="Notas da visita (opcional)…" rows="3"></textarea>
+  <p id="sh-sync-status"></p>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lb"><span id="lb-x" onclick="closeLB()">✕</span><img id="lb-img" src="" alt=""></div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════════
+let SHEET_URL = localStorage.getItem('sheet_url') || '';
+
+// ═══════════════════════════════════════════════════════════════════
+// DATA — 80 empresas Lisboa
+// ═══════════════════════════════════════════════════════════════════
+const CO = [
+  {n:"R2 - MEDIAÇÃO DE SEGUROS, LDA",g:"ROSA DA CONCEIÇÃO CARDINHA NOBRE",m:"Lg. Pedro Correia Marques, Nr. 4 E",lat:38.7172,lng:-9.1432},
+  {n:"MOLINARI,LDA",g:"FRANCISCO MIGUEL ANDRADE DA CRUZ ALVES PORTO",m:"Rua Rodrigo Da Fonseca Nr. 56",lat:38.7209,lng:-9.1535},
+  {n:"UNIPEOPLE - MEDIAÇÃO DE SEGUROS, UNIPESSOAL, LDA",g:"JOSÉ DAVID MENDES PEREIRA",m:"Rua Conde Redondo, Nr. 82",lat:38.7228,lng:-9.1435},
+  {n:"MSE - CORRETORES E CONSULTORES DE SEGUROS S.A.",g:"JOSE ANTONIO DE CARVALHO PEREIRA",m:"Av. Conde Valbom Nr. 1a",lat:38.7295,lng:-9.1464},
+  {n:"UNIWAY - MEDIAÇÃO DE SEGUROS LDA",g:"MANUEL RODRIGUES LOPES",m:"Rua Profº Fernando Da Fonseca, Nr. 10 C",lat:38.7340,lng:-9.1571},
+  {n:"CONCENTRIX SAS - SUCURSAL EM PORTUGAL",g:"CARLOS MANUEL ALVES MOREIRA",m:"Av. Do Mediterrâneo, Nr. 1",lat:38.7658,lng:-9.0984},
+  {n:"SÃO VICENTE SEGUROS, S.A.",g:"TIAGO DE SOUSA SANTOS",m:"Rua Profº Gomes Teixeira Nr. 9c",lat:38.7162,lng:-9.1408},
+  {n:"JRC - MEDIAÇÃO DE SEGUROS LDA",g:"MARIANA CORREIA LAGE PORTELA MORAIS BORGES DE CARVALHO",m:"Rua Profº Reinaldo Dos Santos Nr. 12 1º B",lat:38.7380,lng:-9.1620},
+  {n:"PLC - CORRETORES DE SEGUROS S.A.",g:"BRUNO MIGUEL FIGUEIRA MARQUES NUNES",m:"Av. Infante Santo Nr. 48",lat:38.7073,lng:-9.1568},
+  {n:"CENTRO SEGUROS Y SERVICIOS ECI AG. SEGUROS VINCULADA SA (SUC.PORTUGAL)",g:"JOSE LEOPOLDO DEL NOGAL ROPERO",m:"Av. António Augusto De Aguiar Nr. 31",lat:38.7260,lng:-9.1508},
+  {n:"CSB - MEDIAÇÃO DE SEGUROS, S.A.",g:"DIOGO PAULO BACELAR DE ALMEIDA NUNES",m:"Rua Castilho Nr. 39",lat:38.7230,lng:-9.1552},
+  {n:"VAN AMEYDE (PORTUGAL) - SOCIEDADE REGULADORA DE SINISTROS, S.A.",g:"PIET MIDDELKOOP",m:"Rua Ivone Silva, Nr. 6",lat:38.7353,lng:-9.1472},
+  {n:"VEP ACTUÁRIOS, UNIPESSOAL LDA",g:"ABRAHAM ERNESTO HERNANDEZ PACHECO",m:"Campo Grande, Nr. 35",lat:38.7539,lng:-9.1567},
+  {n:"CBK LISBOA - MEDIADORES DE SEGUROS, LDA",g:"JOÃO WELSH",m:"Rua Rodrigues Sampaio, Nr. 19",lat:38.7233,lng:-9.1448},
+  {n:"GO FAR INSURANCE - SOLUÇÕES SERV. PROTECÇÃO DA SAÚDE, MED.SEGUROS,S.A",g:"EMA ISABEL GOUVEIA MARTINS PAULINO PIRES",m:"Rua Marechal Saldanha, Nr. 1",lat:38.7285,lng:-9.1471},
+  {n:"DENCIO-MEDIAÇÃO DE SEGUROS, LDA.",g:"LUIS MANUEL FERREIRA PINTO",m:"Av. Defensores De Chaves Nr. 21",lat:38.7305,lng:-9.1439},
+  {n:"MFO - MEDIAÇÃO DE SEGUROS, LDA",g:"CARLOS JOAQUIM ANJOS GALHETO DE CARVALHO",m:"Rua Tierno Galvan - Amoreiras Nr. 10",lat:38.7199,lng:-9.1569},
+  {n:"CED PORTUGAL, UNIPESSOAL, LDA",g:"JAN-WILLEM MARTINUS WOLFFENBUTTEL",m:"Rua Dos Lagares D'El Rei Nr. 19",lat:38.7127,lng:-9.1392},
+  {n:"OPTIRISK - MEDIAÇÃO DE SEGUROS, LDA",g:"RODRIGO MIGUEL POPPE DE FRANÇA MARTINS",m:"Rua Ricardo Espírito Santo Nr. 11",lat:38.7088,lng:-9.1374},
+  {n:"POWER OF INSURANCE, LDA",g:"PAULA MARIA GALHOFA RODRIGUES SEMIÃO PEIXOTO",m:"Praça José Fontana Nr. 4-A",lat:38.7239,lng:-9.1438},
+  {n:"SPORTING SEGUROS, MEDIADORA DE SEGUROS, LDA",g:"JOÃO MANUEL DOS SANTOS VILLA DE BRITO",m:"Av. Liberdade Nr. 90",lat:38.7193,lng:-9.1432},
+  {n:"JOSÉ MATA CONSULTORES DE SEGUROS, LDA",g:"ANA ALEXANDRA PANTOJA MATA",m:"Rua Artilharia 1 Nr. 79",lat:38.7208,lng:-9.1564},
+  {n:"ADVANTAGE - DISTRIBUIÇÃO DE SEGUROS, LDA",g:"SERGIO PAULO REIS PEREIRA",m:"Av. Almirante Gago Coutinho Nr. 164",lat:38.7432,lng:-9.1274},
+  {n:"ATHENAS - MEDIAÇÃO DE SEGUROS, LDA.",g:"JOÃO PAULO AZEVEDO MIRANDA DINIZ",m:"Rua Do Salitre Nr. 189 B",lat:38.7215,lng:-9.1497},
+  {n:"NOS MEDIAÇÃO DE SEGUROS S.A.",g:"DANIEL LOPES BEATO",m:"Rua Actor António Silva Nr. 9",lat:38.7360,lng:-9.1567},
+  {n:"DUOSEG - MEDIAÇÃO DE SEGUROS, LDA",g:"ANTONIO MIGUEL LIBORIO DA COSTA AGOSTINHO",m:"Rua Francisco Stromp Lt. B4",lat:38.7478,lng:-9.1614},
+  {n:"METASEGUROS - SOCIEDADE MEDIADORA DE SEGUROS, LDA",g:"HELDER ANTONIO MENDES LANÇA",m:"Passagem Do Adamastor, Nr. 14/B",lat:38.7058,lng:-9.1440},
+  {n:"SIRIUS - MEDIAÇÃO DE SEGUROS, LDA.",g:"NUNO MIGUEL MACHADO FERNANDES SIMÕES VENTURA",m:"Rua José D'Esaguy Nr. 12",lat:38.7420,lng:-9.1589},
+  {n:"ARCHER & CIA., CORRETORES DE SEGUROS, LDA",g:"MARIANA CORREIA LAGE PORTELA MORAIS BORGES DE CARVALHO",m:"Av. Liberdade Nr. 90",lat:38.7193,lng:-9.1436},
+  {n:"COMPARADOR.PT, UNIPESSOAL, LDA",g:"",m:"Av. Da Liberdade Nr. 129 B",lat:38.7183,lng:-9.1424},
+  {n:"BRUNO CARRADA - MEDIAÇÃO DE SEGUROS, UNIPESSOAL LDA",g:"BRUNO MIGUEL CARRADA GONÇALVES",m:"Praça De Londres Nr. 10 B",lat:38.7388,lng:-9.1305},
+  {n:"INAVESTE MEDIAÇÃO DE SEGUROS UNIPESSOAL, LDA",g:"BENJAMIN JEAN ARTHUR VERLINGUE",m:"Rua Silva E Albuquerque Nr. 17",lat:38.7297,lng:-9.1552},
+  {n:"SAROS - SOCIEDADE DE MEDIAÇÃO DE SEGUROS, LDA.",g:"JOANA CATARINA RODRIGUES LIMA",m:"Calçada Duque Nr. 20",lat:38.7151,lng:-9.1413},
+  {n:"BLOCO SEGURO - SOCIEDADE DE MEDIAÇÃO DE SEGUROS, LDA",g:"SÉRGIO LINO DA SILVA CARDOSO",m:"Estrada De Benfica Nr. 684 A",lat:38.7488,lng:-9.1860},
+  {n:"UNIPEOPLE INSURANCE BROKERS, S.A.",g:"JOSÉ DAVID MENDES PEREIRA",m:"Rua Nóbrega E Sousa Bl. 3 Loja B",lat:38.7398,lng:-9.1648},
+  {n:"GAAJ SEGUROS - MEDIAÇÃO DE SEGUROS, LDA",g:"ANA CATARINA GOMES JULIO ALPUIM",m:"Calçada Dos Mestres, Rua 8 Nr. 40",lat:38.7301,lng:-9.1891},
+  {n:"SERSEGURO - CORRETOR DE SEGUROS, UNIPESSOAL LDA",g:"ROGERIO DE MAGALHÃES DIAS",m:"Av. Duque D'Ávila, Nr. 116 B",lat:38.7308,lng:-9.1464},
+  {n:"SPECIALTY RISKS - DISTRIBUIÇÃO DE SEGUROS, LDA",g:"HENRIQUE AMORIM FARIA DE ARAUJO",m:"Av. António Augusto De Aguiar Nr. 130",lat:38.7275,lng:-9.1528},
+  {n:"APTIA GROUP PORTUGAL S.A.",g:"JOÃO FILIPE JUNQUEIRO BELCHIOR DA SILVA FERNANDES",m:"Av. Fontes Pereira De Melo Nr. 14",lat:38.7258,lng:-9.1478},
+  {n:"GOBUSINESS - MEDIAÇÃO DE SEGUROS, LDA",g:"CARLOS JOAQUIM DA COSTA GOMES",m:"Av. Da Igreja Nr. 42",lat:38.7188,lng:-9.1618},
+  {n:"AMWINS GLOBAL RISKS B.V. - SUCURSAL EM PORTUGAL",g:"RICARDO JORGE DE ANDRADE BORGES",m:"Av. República Nr. 18",lat:38.7328,lng:-9.1452},
+  {n:"SAFE-CROP, LDA",g:"FILIPE GORJÃO CLARA CASTRO CHARTERS DE AZEVEDO",m:"Av. De Berna Nr. 31",lat:38.7350,lng:-9.1528},
+  {n:"OPTIMIZE - MEDIAÇÃO DE SEGUROS, UNIPESSOAL, LDA",g:"NUNO RICARDO TEIXEIRA DOS SANTOS",m:"Av. Fontes Pereira De Melo Nr. 21",lat:38.7248,lng:-9.1482},
+  {n:"POLICARPO & TRAVASSOS - MEDIAÇÃO DE SEGUROS, LDA",g:"JOSE POLICARPO VICENTE",m:"Av. Maria Helena Vieira Da Silva, Nr. 3",lat:38.7448,lng:-9.1562},
+  {n:"WINSURANCE-MEDIAÇÃO DE SEGUROS, LDA.",g:"NUNO MANUEL BENITO MUÑOS NUNES MENDES",m:"Av. Da Liberdade Nr. 110",lat:38.7188,lng:-9.1432},
+  {n:"BMA'S BROKERS - MEDIAÇÃO DE SEGUROS, LDA",g:"FERNANDO SANTOS CUNHA",m:"Rua Odette De Saint-Maurice, Lt. 3 C",lat:38.7478,lng:-9.1548},
+  {n:"E-SEO - MEDIAÇÃO DE SEGUROS, S.A.",g:"FRANCISCO MIGUEL CUBELO FARIA DE VASCONCELOS MACHADO",m:"Av. Almirante Gago Coutinho, Nr. 164",lat:38.7432,lng:-9.1270},
+  {n:"PEDRO BELMONTE, UNIPESSOAL LDA",g:"PEDRO ANTONIO BELMONTE TRAVASSOS",m:"Porta Do Mar, Nr. 4 B",lat:38.7082,lng:-9.1368},
+  {n:"AUDAXFIRMUS - MEDIAÇÃO DE SEGUROS, LDA.",g:"ANTONIO MANUEL SERODIO PEREIRA",m:"Rua Hermano Neves Nr. 22",lat:38.7228,lng:-9.1498},
+  {n:"2DO INSURANCE, UNIPESSOAL, LDA",g:"TELMO CHAGAS MONTEIRO",m:"Av. Fontes Pereira De Melo, Nr. 16",lat:38.7252,lng:-9.1479},
+  {n:"PROTESTE SEGUROS, MEDIAÇÃO DE SEGUROS, SOCIEDADE UNIPESSOAL LDA",g:"ROLAND JACQUES LEON COUNYE",m:"Av. Engº Arantes E Oliveira Nr. 13",lat:38.7352,lng:-9.1332},
+  {n:"TUTELA - MEDIAÇÃO DE SEGUROS, LDA.",g:"NUNO MIGUEL LOPES DE OLIVEIRA",m:"Av. Gomes Pereira Nr. 69-B",lat:38.7438,lng:-9.1858},
+  {n:"CONTACTLIFE - MEDIAÇÃO DE SEGUROS, LDA",g:"ANA CATARINA DIAS MOREIRA MOURA RIBEIRO",m:"Rua Do Vale De Stº António Nr. 163",lat:38.7162,lng:-9.1298},
+  {n:"MARGEM - MEDIAÇÃO DE SEGUROS, LDA.",g:"SEBASTIEN ALBERT ALFRED HAQUETTE",m:"Rua Frederico George, Natura Towers, Nr. 37",lat:38.7538,lng:-9.1728},
+  {n:"F2F-MEDIAÇÃO DE SEGUROS, LDA.",g:"ADELINO JOÃO ALVES DA FONSECA",m:"Rua Rodrigues Sampaio Nr. 21",lat:38.7233,lng:-9.1450},
+  {n:"PAULA MIGUÉIS - MEDIAÇÃO SEGUROS, LDA",g:"PAULA CRISTINA PINTO MIGUEIS",m:"Rua Campolide Nr. 53 E",lat:38.7258,lng:-9.1618},
+  {n:"NEW CALL - MEDIAÇÃO DE SEGUROS, LDA",g:"JORGE MANUEL DE SOUSA MOTA",m:"Rua Xavier Araújo Nr. 10",lat:38.7198,lng:-9.1368},
+  {n:"SM - MEDIAÇÃO PROFISSIONAL DE SEGUROS, LDA.",g:"",m:"Rua Silva Tavares Edif. Madame Campos",lat:38.7068,lng:-9.1428},
+  {n:"100 RISCOS - MEDIAÇÃO DE SEGUROS, LDA",g:"VITORINO CANELAS DA CUNHA",m:"Av. Colégio Militar Nr. 153",lat:38.7468,lng:-9.1928},
+  {n:"ACCIPIENS - GESTÃO E MEDIAÇÃO, UNIPESSOAL LDA",g:"TOMAS DA CUNHA MARTINS SEMIDE DE ABREU",m:"Rua Padre Américo, Nr. 22 D",lat:38.7188,lng:-9.1648},
+  {n:"A.I. - MEDIAÇÃO DE SEGUROS, LDA",g:"MARIA LEONOR FREITAS DE FIGUEIREDO COSTA AMORIM AFONSO",m:"Av. Fontes Pereira De Melo, Nr. 14",lat:38.7258,lng:-9.1474},
+  {n:"COMPEUGROUP - SOCIEDADE DE MEDIAÇÃO DE SEGUROS, UNIPESSOAL LDA",g:"VERA MACHADO DA CRUZ SARAIVA PEIXOTO",m:"Praça De Alvalade Nr. 6",lat:38.7528,lng:-9.1408},
+  {n:"LECOQIMMO - MEDIAÇÃO IMOBILIÁRIA, UNIPESSOAL LDA",g:"CARLOS FILIPE PINTO DE OLIVEIRA PEREIRA",m:"Av. Da Liberdade, Nr. 129 B",lat:38.7183,lng:-9.1420},
+  {n:"MARTINHO SOARES, LDA",g:"PEDRO MIGUEL MARTINHO SOARES",m:"Rua Do Gravato Nr. 10",lat:38.7268,lng:-9.1398},
+  {n:"ANTRALMED - MEDIADORES DE SEGUROS, S.A.",g:"HENRIQUE AMORIM FARIA DE ARAUJO",m:"Av. Engº Arantes E Oliveira Nr. 15",lat:38.7348,lng:-9.1330},
+  {n:"DIVINA MEDIAÇÃO DE SEGUROS - AGENCIA DE SUBSCRIÇÃO, LDA",g:"LUIS MARIA CORREA LAGE PORTELA MORAIS",m:"Rua Julieta Ferrão, Nr. 12 Piso 8",lat:38.7538,lng:-9.1538},
+  {n:"FERRAZ DE SEQUEIRA - MEDIAÇÃO DE SEGUROS, LDA",g:"EUGENIO MANUEL MIRANDA FERRAZ DE SEQUEIRA",m:"Rua Saraiva De Carvalho Nr. 288 B",lat:38.7108,lng:-9.1558},
+  {n:"RBCS, CONSULTORIA & SERVIÇOS, LDA.",g:"RICARDO JORGE DO NASCIMENTO BEJA",m:"Rua Pereira E Sousa, Nr. 14",lat:38.7098,lng:-9.1548},
+  {n:"SPORT LISBOA E BENFICA - MEDIAÇÃO DE SEGUROS, UNIPESSOAL LDA",g:"JOÃO MANUEL VARANDAS FERNANDES",m:"Av. Eusébio Da Silva Ferreira - Estádio da Luz",lat:38.7528,lng:-9.1848},
+  {n:"CABAÇAMED - MEDIADORA DE SEGUROS, LDA.",g:"JOSÉ MANUEL FIGUEIREDO DA SILVA DO Ó",m:"Estrada Das Garridas Nr. 8-A",lat:38.7608,lng:-9.1868},
+  {n:"REORGANIZA AGORA - MEDIAÇÃO DE SEGUROS, UNIPESSOAL LDA",g:"JOÃO DOMINGOS PESSOA JORGE MORAIS BARBOSA",m:"Av. Da República, Nr. 45",lat:38.7348,lng:-9.1448},
+  {n:"JCSM - GESTÃO DE SEGUROS, LDA",g:"JOÃO CARLOS SEIXAS MARTINS",m:"Passagem Do Adamastor Nr. 6",lat:38.7062,lng:-9.1438},
+  {n:"INTEREUROPE AG EUROPEAN LAW SERVICE INTEREUROPE PORTUGAL",g:"",m:"Av. Engº Duarte Pacheco Torre 2 Piso 8",lat:38.7178,lng:-9.1628},
+  {n:"SAFE DAYS, LDA",g:"ISABEL ALEXANDRA GOMES DIAS PARREIRA",m:"Rua Drº Oliveira Ramos Nr. 23-A",lat:38.7118,lng:-9.1738},
+  {n:"ALBUQUERQUE-MEDIADORES DE SEGUROS, LDA",g:"RICARDO MIGUEL VICENTE NOBRE",m:"Rua Antero De Quental Nr. 35-D",lat:38.7108,lng:-9.1568},
+  {n:"CODIGOSEGUR - MEDIAÇÃO SEGUROS, LDA.",g:"DIOGO LOPES DE ALMEIDA BAPTISTA",m:"Rua João De Freitas Branco Nr. 16-A",lat:38.7128,lng:-9.1728},
+  {n:"SANO-SEGUROS-SOCIEDADE MEDIADORA DE SEGUROS, UNIPESSOAL, LDA",g:"MANUEL EUGENIO MACHADO MACEDO",m:"Praça Príncipe Perfeito Nr. 2",lat:38.7258,lng:-9.1398},
+  {n:"LEAN - MEDIAÇÃO DE SEGUROS, LDA",g:"TIAGO DE CAMPOS COSTA LINO",m:"Rua Fernando Lopes Graça Nr. 18a",lat:38.7038,lng:-9.1658},
+  {n:"COIMBRA DUARTE - MEDIAÇÃO DE SEGUROS, LDA",g:"LISETE DE MATOS DUARTE",m:"Rua Francisco Baia Nr. 10-D",lat:38.7448,lng:-9.1618},
+  {n:"4QMS, LDA",g:"CARLA MARIA SILVA QUENTAL",m:"Estrada Da Luz Nr. 169",lat:38.7498,lng:-9.1888}
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+let ST = JSON.parse(localStorage.getItem('st_v2') || '{}');
+// ST[i] = {v: bool, notes: '', photos: [], ts: timestamp}
+function gs(i){ return ST[i] || {v:false,notes:'',photos:[]} }
+function ss(){ localStorage.setItem('st_v2', JSON.stringify(ST)) }
+
+let markers=[], map, selIdx=-1, curFilter='all', curSearch='';
+
+// ═══════════════════════════════════════════════════════════════════
+// SETUP
+// ═══════════════════════════════════════════════════════════════════
+function skipSetup(){ document.getElementById('setup').style.display='none'; initMap(); }
+function saveGID(){
+  const url = document.getElementById('gid-in').value.trim();
+  if(!url){ toast('Cola o URL da Apps Script'); return; }
+  SHEET_URL = url;
+  localStorage.setItem('sheet_url', url);
+  document.getElementById('setup').style.display='none';
+  initMap();
+  syncFromSheet();
+}
+// Auto-skip if already configured
+window.addEventListener('DOMContentLoaded', () => {
+  if(SHEET_URL){ document.getElementById('setup').style.display='none'; }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SYNC with Google Sheets Apps Script
+// ═══════════════════════════════════════════════════════════════════
+let syncTimer;
+function setSyncDot(s){ const d=document.getElementById('sync-dot'); d.className=''; d.classList.add(s); }
+
+async function syncFromSheet(){
+  if(!SHEET_URL) return;
+  setSyncDot('syncing');
+  try {
+    const r = await fetch(SHEET_URL+'?action=get', {cache:'no-store'});
+    const data = await r.json();
+    // merge: sheet wins for visited status, local wins for photos/notes
+    data.forEach(row => {
+      const i = row.idx;
+      if(i===undefined||i<0||i>=CO.length) return;
+      if(!ST[i]) ST[i]={v:false,notes:'',photos:[]};
+      ST[i].v = row.visited === true || row.visited === 'TRUE' || row.visited === 'true';
+      if(row.notes && !ST[i].notes) ST[i].notes = row.notes;
+    });
+    ss(); renderList(); updateStats(); refreshMarkers();
+    setSyncDot('ok');
+  } catch(e){ setSyncDot('err'); }
+}
+
+async function pushToSheet(i){
+  if(!SHEET_URL) return;
+  setSyncDot('syncing');
+  try {
+    const s = gs(i);
+    const body = JSON.stringify({action:'set', idx:i, visited:s.v, notes:s.notes, name:CO[i].n});
+    await fetch(SHEET_URL, {method:'POST', body, headers:{'Content-Type':'application/json'}});
+    setSyncDot('ok');
+  } catch(e){ setSyncDot('err'); }
+}
+
+// Auto sync every 60s
+setInterval(()=>{ if(SHEET_URL) syncFromSheet(); }, 60000);
+
+// ═══════════════════════════════════════════════════════════════════
+// MAP
+// ═══════════════════════════════════════════════════════════════════
+function mkIcon(visited, sel){
+  const c = visited ? '#22c55e' : '#4f8ef7';
+  const ring = sel ? `<circle cx="16" cy="13" r="13" fill="none" stroke="white" stroke-width="2.5" opacity=".7"/>` : '';
+  const check = visited ? `<path d="M11 13l3 3 5-5" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : '';
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42"><filter id="sh"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-opacity=".4"/></filter><g filter="url(#sh)"><path d="M16 2C9.4 2 4 7.4 4 14c0 9.5 12 24 12 24S28 23.5 28 14C28 7.4 22.6 2 16 2z" fill="${c}"/>${ring}${check}</g></svg>`;
+  return L.divIcon({html:svg,className:'',iconSize:[32,42],iconAnchor:[16,42],popupAnchor:[0,-44]});
+}
+
+function initMap(){
+  map = L.map('map',{zoomControl:true,attributionControl:false}).setView([38.727,-9.150],13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
+  CO.forEach((c,i)=>{
+    const s=gs(i);
+    const mk=L.marker([c.lat,c.lng],{icon:mkIcon(s.v,false)}).addTo(map);
+    mk.bindPopup(`<div class="pn">${c.n}</div><div class="pg">👤 ${c.g||'—'}</div><div class="pa2">📍 ${c.m}</div><button class="pb" onclick="openDetail(${i})">Ver detalhes</button>`,{maxWidth:260});
+    mk.on('click',()=>selMarker(i));
+    markers.push(mk);
+  });
+  renderList(); updateStats();
+  if(SHEET_URL) syncFromSheet();
+}
+
+function refreshMarkers(){
+  CO.forEach((_,i)=>{ markers[i]&&markers[i].setIcon(mkIcon(gs(i).v, i===selIdx)); });
+}
+
+function selMarker(i){
+  if(selIdx>=0) markers[selIdx].setIcon(mkIcon(gs(selIdx).v,false));
+  selIdx=i;
+  markers[i].setIcon(mkIcon(gs(i).v,true));
+  openDetail(i);
+  renderList();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DETAIL
+// ═══════════════════════════════════════════════════════════════════
+window.openDetail = function(i){
+  selIdx=i;
+  const c=CO[i], s=gs(i);
+  document.getElementById('sh-name').textContent=c.n;
+  document.getElementById('sh-ger').textContent = c.g ? '👤 '+c.g : '👤 Responsável não indicado';
+  document.getElementById('sh-addr').textContent = '📍 '+c.m;
+  document.getElementById('sh-notes').value = s.notes||'';
+  const bv=document.getElementById('btn-visit');
+  bv.textContent = s.v ? '✓ Visitada' : '○ Marcar visitada';
+  bv.className = s.v ? 'ab succ' : 'ab';
+  document.getElementById('sh-sync-status').textContent = SHEET_URL ? '🔗 Sincronizado com a equipa' : '📱 Apenas neste dispositivo';
+  document.getElementById('btn-maps').onclick=()=>window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.m+', Lisboa, Portugal')}`);
+  document.getElementById('btn-visit').onclick=()=>toggleVisit(i);
+  renderPhotos(i);
+  document.getElementById('sheet').classList.add('open');
+  document.getElementById('overlay').classList.add('open');
+  // fly map
+  map && map.flyTo([c.lat,c.lng],16,{duration:.7});
+};
+
+function closeSheet(){
+  document.getElementById('sheet').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+
+function toggleVisit(i){
+  if(!ST[i]) ST[i]={v:false,notes:'',photos:[]};
+  ST[i].v=!ST[i].v;
+  ST[i].ts=Date.now();
+  ss();
+  const s=gs(i);
+  const bv=document.getElementById('btn-visit');
+  bv.textContent=s.v?'✓ Visitada':'○ Marcar visitada';
+  bv.className=s.v?'ab succ':'ab';
+  markers[i]&&markers[i].setIcon(mkIcon(s.v,true));
+  renderList(); updateStats();
+  toast(s.v?'✓ Marcada como visitada':'Desmarcada');
+  pushToSheet(i);
+}
+
+window.saveNotes = function(){
+  if(selIdx<0) return;
+  if(!ST[selIdx]) ST[selIdx]={v:false,notes:'',photos:[]};
+  ST[selIdx].notes=document.getElementById('sh-notes').value;
+  ss(); pushToSheet(selIdx);
+  toast('Notas guardadas');
+  closeSheet();
+};
+
+document.getElementById('sh-close').onclick=closeSheet;
+document.getElementById('overlay').onclick=closeSheet;
+
+// ═══════════════════════════════════════════════════════════════════
+// PHOTOS
+// ═══════════════════════════════════════════════════════════════════
+function renderPhotos(i){
+  const s=gs(i), wrap=document.getElementById('sh-photos');
+  wrap.innerHTML='';
+  (s.photos||[]).forEach(src=>{
+    const img=document.createElement('img');
+    img.className='pt'; img.src=src;
+    img.onclick=()=>openLB(src); wrap.appendChild(img);
+  });
+  const a=document.createElement('div');
+  a.className='pa'; a.textContent='+';
+  a.onclick=()=>document.getElementById('photo-in').click();
+  wrap.appendChild(a);
+}
+
+document.getElementById('photo-in').onchange=function(e){
+  if(selIdx<0) return;
+  if(!ST[selIdx]) ST[selIdx]={v:false,notes:'',photos:[]};
+  Array.from(e.target.files).forEach(f=>{
+    const r=new FileReader();
+    r.onload=ev=>{ ST[selIdx].photos.push(ev.target.result); ss(); renderPhotos(selIdx); };
+    r.readAsDataURL(f);
+  });
+  this.value='';
+};
+
+function openLB(src){ document.getElementById('lb-img').src=src; document.getElementById('lb').classList.add('open'); }
+window.closeLB=()=>document.getElementById('lb').classList.remove('open');
+
+// ═══════════════════════════════════════════════════════════════════
+// LIST
+// ═══════════════════════════════════════════════════════════════════
+function renderList(){
+  const q=curSearch.toLowerCase(), list=document.getElementById('list');
+  list.innerHTML='';
+  CO.forEach((c,i)=>{
+    const s=gs(i);
+    if(curFilter==='yes'&&!s.v) return;
+    if(curFilter==='no'&&s.v) return;
+    if(q&&!c.n.toLowerCase().includes(q)&&!c.g.toLowerCase().includes(q)&&!c.m.toLowerCase().includes(q)) return;
+    const d=document.createElement('div');
+    d.className='card'+(s.v?' done':'')+(i===selIdx?' sel':'');
+    d.innerHTML=`<div class="cnum">#${String(i+1).padStart(2,'0')}</div><div class="cn">${c.n}</div><div class="cm">${c.g?'👤 '+c.g+'<br>':''}📍 ${c.m}</div><span class="cbadge ${s.v?'done':'pend'}">${s.v?'✓':'○'}</span>`;
+    d.onclick=()=>{ selMarker(i); if(window.innerWidth<=680) document.getElementById('panel').classList.remove('open'); };
+    list.appendChild(d);
+  });
+}
+
+function updateStats(){
+  const v=CO.filter((_,i)=>gs(i).v).length, t=CO.length;
+  document.getElementById('sv').textContent=v;
+  document.getElementById('st').textContent=t;
+  document.getElementById('prog-bar').style.width=(v/t*100)+'%';
+  document.getElementById('pl-n').textContent=v+' visitadas';
+  document.getElementById('pl-p').textContent=Math.round(v/t*100)+'%';
+}
+
+document.getElementById('search').oninput=function(){ curSearch=this.value; renderList(); };
+document.querySelectorAll('.fb').forEach(b=>{
+  b.onclick=function(){
+    document.querySelectorAll('.fb').forEach(x=>x.classList.remove('on'));
+    this.classList.add('on'); curFilter=this.dataset.f; renderList();
+  };
+});
+
+document.getElementById('btn-lista').onclick=()=>{
+  document.getElementById('panel').classList.toggle('open');
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════════
+let toastT;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2200);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════════════════════════
+if(SHEET_URL){ document.getElementById('setup').style.display='none'; initMap(); }
+</script>
+</body>
+</html>
